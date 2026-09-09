@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>科隆大教堂 · 体素纪元 | Kölner Dom Voxel</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { overflow:hidden; width:100%; height:100%; background:#150a28;
+    font-family:'Palatino Linotype','Songti SC',Georgia,serif; }
+  canvas { display:block; }
+  #hud {
+    position:absolute; top:18px; left:18px; color:#f3e6cb; padding:14px 20px;
+    background:linear-gradient(135deg, rgba(30,14,52,.82), rgba(58,26,74,.62));
+    border:1px solid rgba(255,214,140,.28); border-radius:10px; backdrop-filter:blur(6px);
+    pointer-events:none; line-height:1.75; font-size:13px; letter-spacing:.04em;
+    box-shadow:0 8px 32px rgba(0,0,0,.45);
+  }
+  #hud h1 { font-size:19px; color:#ffd98f; font-weight:normal; margin-bottom:4px;
+    text-shadow:0 0 14px rgba(255,190,90,.5); }
+  #hud .sub { font-size:11px; color:#b9a6d6; font-style:italic; margin-bottom:8px; }
+  #hud .stat { font-size:10px; color:#8d7fae; }
+  #loading { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color:#ffd98f; font-size:17px; letter-spacing:.35em; text-indent:.35em;
+    background:#150a28; transition:opacity .8s; z-index:10; }
+</style>
+</head>
+<body>
+<div id="hud">
+  <h1>科隆大教堂 · KÖLNER DOM</h1>
+  <div class="sub">Hohe Domkirche Sankt Petrus — 体素纪元</div>
+  <div class="stat">正在统计体素…</div>
+</div>
+<div id="loading">正 在 令 大 教 堂 尖 塔 穿 入 暮 色 …</div>
+
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+/* ═══════════════ 渲染器 / 场景 / 相机 ═══════════════ */
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.02;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x7a4066, 0.0035);
+
+const camera = new THREE.PerspectiveCamera(48, innerWidth/innerHeight, 0.5, 2400);
+camera.position.set(132, 74, 152);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(-4, 34, 2);
+controls.enableDamping = true; controls.dampingFactor = .06;
+controls.maxPolarAngle = Math.PI * 0.495;
+controls.minDistance = 30; controls.maxDistance = 430;
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.38, 0.55, 0.86));
+
+/* ═══════════════ 体素核心 ═══════════════
+   bucket: 0 石体 1 彩窗玻璃(弱发光) 2 金饰灯火(强发光) 3 藤草植被 4 岩石 */
+const map = new Map();
+const _c = new THREE.Color();
+function hash3(x,y,z){ let h=(x*374761393+y*668265263+z*1274126177)|0;
+  h=Math.imul(h^(h>>>13),1103515245); return ((h^(h>>>16))>>>0)/4294967295; }
+
+function setV(x,y,z,hex,b=0,jit=0){
+  _c.set(hex);
+  if(jit>0){ _c.offsetHSL(0,0,(hash3(x,y,z)-.5)*jit); }
+  map.set(x+','+y+','+z,{c:_c.clone(),b});
+}
+function box(x1,y1,z1,x2,y2,z2,hex,b=0,jit=0){
+  const ax=Math.min(x1,x2),bx=Math.max(x1,x2),
+        ay=Math.min(y1,y2),by=Math.max(y1,y2),
+        az=Math.min(z1,z2),bz=Math.max(z1,z2);
+  for(let x=ax;x<=bx;x++)for(let y=ay;y<=by;y++)for(let z=az;z<=bz;z++)
+    setV(x,y,z,hex,b,jit);
+}
+const column=(x,y0,h,z,c,b=0,j=0)=>box(x,y0,z,x,y0+h-1,z,c,b,j);
+
+/* 尖拱（哥特等边）半宽函数：w 总宽奇数、h 高度、dy 当前层距拱脚高度 */
+function lancetHW(dy,w,h){
+  const t=Math.min(1,(h-dy)/h);
+  return Math.max(0, Math.round((w/2-0.0001)*Math.pow(1-t*t*0.78,0.62)));
+}
+
+/* 朝向 ±z 的墙面上画一扇尖拱花窗（含石框与中央竖棂） */
+function lancetWinZ(cx,y0,z,w,h,glass,frame){
+  for(let dy=0;dy<=h;dy++){
+    const hw=lancetHW(dy,w,h);
+    for(let dx=-hw;dx<=hw;dx++){
+      const fr=Math.abs(dx)===hw||dy===0||dy===h||(dx===0&&dy<h*0.8);
+      setV(cx+dx,y0+dy,z,fr?frame:( ((dx+dy)&3)<2?glass:shade(glass) ),fr?0:1);
+    }
+  }
+}
+/* 朝向 ±x 的版本（图形在 y-z 平面展开） */
+function lancetWinX(cz,y0,x,w,h,glass,frame){
+  for(let dy=0;dy<=h;dy++){
+    const hw=lancetHW(dy,w,h);
+    for(let dz=-hw;dz<=hw;dz++){
+      const fr=Math.abs(dz)===hw||dy===0||dy===h||(dz===0&&dy<h*0.8);
+      setV(x,y0+dy,cz+dz,fr?frame:( ((dz+dy)&3)<2?glass:shade(glass) ),fr?0:1);
+    }
+  }
+}
+function shade(hex){ return '#'+new THREE.Color(hex).multiplyScalar(.62).getHexString(); }
+
+/* ═══════════════ 调色板 ═══════════════ */
+const P = {
+  stoneHi:'#ddd2ba', stone:'#c2b294', stoneMid:'#a8977a', stoneLo:'#87755c',
+  stoneDeep:'#64543e',
+  roof:'#47434d', roofHi:'#5a5664', roofLo:'#34313b',
+  gold:'#e8b64a', goldHi:'#ffdd88', bronze:'#8a6a34',
+  glassBlue:'#4a6cc2', glassRed:'#c23a4e', glassGold:'#ffca55',
+  glassCyan:'#4fb8c8',
+  saint:'#efe6d2', skin:'#e0c8a8',
+  trunk:'#6a4a30', leaf1:'#3e6a34', leaf2:'#547e42', leaf3:'#2e5228',
+  plazaA:'#cdc3ae', plazaB:'#b5aa92', plazaRing:'#998c72',
+  iron:'#39303a', lampGlow:'#ffe9a0',
+  rock:['#7d7266','#6b6156','#59503f','#4a4034'],
+  grass:'#6f8a4a',
+  cloud:'#f4eef8', cloudWarm:'#f6dfdc',
+};
+
+/* ═══════════════ 平面布置 ═══════════════
+   +z 西立面（z=44）── 中殿 z 0..39 ── 十字 CROSS_Z=-8 ── 唱诗班 z -28..0 ── 后殿圆心 z=-30 */
+const FZ = 44;            // 西立面外墙 z
+const CROSS_Z = -8;
+const APSE_CZ = -30, APSE_R = 12;
+const TOWER_CX = 17, TOWER_BW = 11;       // 双塔中心 / 半宽
+
+/* ═══════════════ 通用装饰件 ═══════════════ */
+function pinnacle(x,y0,z,h=7,c=P.stone){
+  box(x-1,y0,z-1,x+1,y0+1,z+1,c);
+  for(let i=0;i<h;i++){
+    const r=Math.max(0,((h-i)/h)*2-.01|0);
+    for(let dx=-r;dx<=r;dx++)for(let dz=-r;dz<=r;dz++)
+      if(Math.abs(dx)+Math.abs(dz)<=r+(r>1?1:0))
+        setV(x+dx,y0+2+i,z+dz,i%2?P.stoneLo:c);
+  }
+  setV(x,y0+2+h,z,P.goldHi,2);
+}
+function gableZ(cx,y0,z,w,h,c){                      // 山面朝 ±z 的三角山花
+  for(let dy=0;dy<h;dy++){
+    const hw=Math.round(w/2*(1-dy/h));
+    for(let d=-hw;d<=hw;d++){
+      if(Math.abs(d)>=hw||dy===0||dy===h-1)setV(cx+d,y0+dy,z,c);
+      else if(dy%2===0&&((d+dy)&1))setV(cx+d,y0+dy,z,P.stoneLo);
+    }
+  }
+  setV(cx,y0+h,z,P.goldHi,2);setV(cx,y0+h+1,z,P.goldHi,2);
+  setV(cx-1,y0+h+2,z,P.goldHi,2);setV(cx+1,y0+h+2,z,P.goldHi,2);setV(cx,y0+h+2,z,P.goldHi,2);
+}
+let saintSeq=0;
+function saint(x,y0,z){
+  const robe=[P.glassRed,'#c8b070',P.saint][saintSeq++%3];
+  box(x-1,y0,z,x+1,y0,z,P.stoneDeep);                 // 石台
+  column(x,y0+1,2,z,robe,0,.10);                      // 身袍
+  setV(x-1,y0+2,z,robe,0,.10);setV(x+1,y0+2,z,robe,0,.10); // 肩袖
+  setV(x,y0+3,z,P.skin);                              // 头
+  setV(x,y0+4,z,P.goldHi,2);                          // 光环
+}
+function vineCol(k){ return ['#3e7a34','#54914a','#6ea35a','#3e7a34'][k%4]; }
+
+/* ═══════════════ 地坪高程辅助 ═══════════════ */
+function tileY(x,z){
+  const d=Math.hypot(x,(z-4)*0.92);
+  let yv=0; if(d<70)yv=1; if(d<62)yv=2; if(d<55)yv=3;
+  return yv-3;                                        // 该柱最顶层砖的 y
+}
+
+/* ═══════════════ 主塔（含镂空尖顶）═══════════════ */
+function buildTower(cx){
+  const bw=TOWER_BW, bx0=cx-bw, bx1=cx+bw, bz0=FZ-bw, bz1=FZ+2;
+  const zm=(bz0+bz1)/2;
+
+  /* 基座台阶（落在地坪上） */
+  const gy=tileY(cx,FZ);
+  box(bx0-2,gy,bz0-2,bx1+2,gy+1,bz1+2,P.stoneLo,0,.05);
+
+  /* 塔身外壳 y: gy+2 .. 40 */
+  const yBase=gy+2;
+  for(let y=yBase;y<=40;y++){
+    const belt=(y-yBase)%8===0&&y>yBase&&y<40;
+    for(const fx of[bx0,bx1])for(let z=bz0;z<=bz1;z++)
+      setV(fx,y,z,belt?P.stoneHi:(z<=bz0+1||z>=bz1-1?P.stone:P.stoneMid),0,.06);
+    for(const fz of[bz0,bz1])for(let x=bx0;x<=bx1;x++)
+      setV(x,y,fz,belt?P.stoneHi:(x<=bx0+1||x>=bx1-1?P.stone:P.stoneMid),0,.06);
+  }
+  /* 四角隅柱亮线 */
+  for(const px of[bx0,bx1])for(const pz of[bz0,bz1])
+    column(px,yBase,40-yBase,pz,P.stoneHi,0,.04);
+
+  /* 各面双联尖拱窗（先拍深色凹龛，再叠框与玻璃） */
+  const faces=[
+    {ax:'z',co:bz0,ds:[cx-4,cx+4]},
+    {ax:'z',co:bz1,ds:[cx-4,cx+4]},
+    {ax:'x',co:bx0,ds:[zm-4,zm+4]},
+    {ax:'x',co:bx1,ds:[zm-4,zm+4]},
+  ];
+  for(const f of faces){
+    for(const dcen of f.ds){
+      if(f.ax==='z'){
+        box(dcen-2,10,f.co,dcen+2,24,f.co,P.shadow);
+        lancetWinZ(dcen,13,f.co,5,9,P.glassBlue,P.stoneHi);
+        for(let dy=0;dy<4;dy++){                    // 小尖楣
+          const hw=Math.max(0,2-(dy>>1));
+          for(let dx=-hw;dx<=hw;dx++)setV(dcen+dx,23+dy,f.co,P.stoneHi);
+        }
+      }else{
+        box(f.co,10,dcen-2,f.co,24,dcen+2,P.shadow);
+        lancetWinX(dcen,13,f.co,5,9,P.glassBlue,P.stoneHi);
+        for(let dy=0;dy<4;dy++){
+          const hw=Math.max(0,2-(dy>>1));
+          for(let dz=-hw;dz<=hw;dz++)setV(f.co,23+dy,dcen+dz,P.stoneHi);
+        }
+      }
+    }
+  }
+
+  /* 钟楼层 y41..54：四壁开口 + 百叶阴影 + 分隔墩 */
+  for(let y=41;y<=54;y++){
+    for(const fx of[bx0,bx1])for(let z=bz0;z<=bz1;z++){
+      const pier=x=> x<=bx0+1||x>=bx1-1;
+      if(pier(fx)){setV(fx,y,z,(y&4)?P.stoneHi:P.stone);continue;}
+      if(((fx+z+y)&1)===0)setV(fx,y,z,'#241a14');
+    }
+    for(const fz of[bz0,bz1])for(let x=bx0;x<=bx1;x++){
+      if(x<=bx0+1||x>=bx1-1){setV(x,y,fz,(y&4)?P.stoneHi:P.stone);continue;}
+      if(((x+fz+y)&1)===0)setV(x,y,fz,'#241a14');
+    }
+  }
+  /* 檐口 + 花栏牙子 */
+  box(bx0-1,55,bz0-1,bx1+1,55,bz1+1,P.stoneHi,0,.03);
+  for(let x=bx0-1;x<=bx1+1;x+=3)for(let z=bz0-1;z<=bz1+1;z+=3)
+    if(Math.abs(x-cx)>bw-2||Math.abs(z-zm)>bw-1)
+      setV(x,56,z,P.stoneMid);
+  /* 四角尖塔 */
+  for(const px of[bx0+2,bx1-2])for(const pz of[bz0+3,bz1-3])
+    pinnacle(px,57,pz,9,P.stone);
+
+  /* 方转八角鼓座 y56..62 */
+  for(let y=56;y<=62;y++){
+    const hw=Math.round(bw*(1-(y-56)/6))+1;
+    for(let x=bx0;x<=bx1;x++)for(let z=bz0;z<=bz1;z++){
+      const dd=Math.max(Math.abs(x-cx),Math.abs(z-zm));
+      if(dd>hw||dd<hw-1)continue;
+      setV(x,y,z,(y%3===0)?P.stoneHi:P.stone,0,.05);
+    }
+  }
+  /* 标志性镂空尖顶 */
+  latticeSpire(cx,63,zm,bw-1,118);
+}
+
+/* 镂空尖塔：棱肋 + 环箍 + 斜撑，缝隙透光 */
+function latticeSpire(cx,y0,cz,halfW,topY){
+  const steps=topY-y0;
+  for(let i=0;i<=steps;i++){
+    const y=y0+i;
+    const hw=Math.max(1,Math.round(halfW*(1-i/steps)));
+    for(const sx of[-1,1])for(const sz of[-1,1])
+      setV(cx+sx*hw,y,cz+sz*hw,i%2?P.stoneLo:P.stone);
+    if(i%3===0&&i<steps-2){
+      for(let d=-hw;d<=hw;d++){
+        setV(cx+d,y,cz-hw,d===-hw||d===hw?P.stone:P.stoneMid);
+        setV(cx+d,y,cz+hw,d===-hw||d===hw?P.stone:P.stoneMid);
+        setV(cx-hw,y,cz+d,d===-hw||d===hw?P.stone:P.stoneMid);
+        setV(cx+hw,y,cz+d,d===-hw||d===hw?P.stone:P.stoneMid);
+      }
+    }
+    if(i>4&&i%7===0&&hw>2){
+      for(let q=1;q<hw;q++){
+        setV(cx-q,y,cz-hw+q,P.stoneDeep);setV(cx+q,y,cz-hw+q,P.stoneDeep);
+        setV(cx-q,y,cz+hw-q,P.stoneDeep);setV(cx+q,y,cz+hw-q,P.stoneDeep);
+      }
+    }
+  }
+  box(cx-1,topY,cz-1,cx+1,topY+1,cz+1,P.stone);
+  box(cx,topY+2,cz,cx,topY+6,cz,P.goldHi,2);
+  setV(cx-1,topY+4,cz,P.goldHi,2);setV(cx+1,topY+4,cz,P.goldHi,2);
+}
+
+/* ═══════════════ 西立面幕墙（双塔之间）═══════════════ */
+function buildFacadeScreen(){
+  /* 中央幕墙体量：|x|≤8，山形轮廓至 y46；中段大窗与三连门洞 */
+  const halfW=8;
+  for(let y=2;y<=46;y++){
+    const hw=y<=30?halfW:Math.max(0,Math.round(halfW*(1-(y-30)/16)));
+    if(hw<0)break;
+    for(let x=-hw;x<=hw;x++)for(let z=FZ-3;z<=FZ;z++){
+      const shell=x===-hw||x===hw||z>=FZ-1;
+      if(shell)setV(x,y,z,(y%6===0)?P.stoneHi:P.stone,0,.06);
+      else if(y<12)setV(x,y,z,P.shadow);            // 门厅幽暗进深
+    }
+  }
+  /* 幕墙两肩接入塔身 */
+  box(-halfW-1,28,FZ-3,-halfW-1,38,FZ,P.stone);
+  box( halfW+1,28,FZ-3, halfW+1,38,FZ,P.stone);
+
+  /* —— 中央大门洞：叠涩尖拱 —— */
+  portalArch(0,5,FZ);
+  /* —— 两肩盲龛 + 圣徒 —— */
+  for(const px of[-5.5,5.5]){
+    const bx=Math.round(px);
+    box(bx-2,2,FZ,bx+2,14,FZ,P.shadow);
+    lancetWinZ(bx,4,FZ,3,8,'#8a4ac2',P.stoneHi);
+    saint(bx-3,2,FZ);saint(bx+3,2,FZ);
+  }
+  /* 门廊顶横向圣徒列 */
+  for(let sx=-7;sx<=7;sx+=3){
+    if(Math.abs(sx)<2)sx+= (sx<0?-1:1)*0;
+    if(Math.abs(sx)>=2)saint(sx,16,FZ-1);
+  }
+
+  /* —— 中央巨窗（玫瑰圆窗 + 下部五分尖拱）—— */
+  roseWindow(0,FZ-1,34,5,'z');
+  const wy0=15,ww=5,wh=11;
+  box(-ww,wy0,FZ-1,ww,wy0+wh,FZ-1,P.shadow);
+  for(let dy=0;dy<=wh;dy++){
+    const hw=lancetHW(dy,ww*2,wh);
+    for(let dx=-hw;dx<=hw;dx++){
+      const fr=Math.abs(dx)===hw||dy===0||dy===wh||dx===0;
+      let col;
+      if(fr)col=P.stoneHi;
+      else{
+        const ang=Math.atan2(dx,dy-wh*.55);
+        const bin=Math.floor(((ang+Math.PI)/(Math.PI*2))*12)%3;
+        col=[P.glassBlue,P.glassRed,P.glassGold][bin];
+      }
+      setV(dx,wy0+dy,FZ-1,col,fr?0:1);
+    }
+    if(dy<wh*.7){
+      setV(-Math.floor(hw/2),wy0+dy,FZ-1,P.stoneHi);
+      setV( Math.floor(hw/2),wy0+dy,FZ-1,P.stoneHi);
+    }
+  }
+  /* 大山花压顶 */
+  gableZ(0,31,FZ-1,17,15,P.stoneHi);
+}
+/* 叠涩尖拱门洞（层层后退 + 马赛克楣带 + 铜门） */
+function portalArch(cx,w,zf){
+  const hgt=w*2+4;
+  for(let d=0;d<=3;d++){
+    const zw=w-d, hh=hgt-d*2, zz=zf-d;
+    for(let dy=0;dy<=hh;dy++){
+      const hw=lancetHW(dy,zw*2+1,hh);
+      for(let dx=hw+1;dx<=zw;dx++){
+        setV(cx+dx,dy,zz,P.stoneHi,0,.04*d);
+        setV(cx-dx,dy,zz,P.stoneHi,0,.04*d);
+      }
+      for(let dx=-hw;dx<=hw;dx++){
+        const rim=Math.abs(dx)>=hw-0||dy===hh||dy===hh-1;
+        if(rim)setV(cx+dx,dy,zz,P.stone);
+      }
+    }
+    const ty=hh+1;
+    for(let dx=-zw;dx<=zw;dx++){
+      const pat=(Math.abs(dx)*3+ty*5)%7;
+      setV(cx+dx,ty,zz,pat<2?P.glassRed:pat<4?P.glassBlue:pat<5?P.glassGold:P.stoneLo,pat<5?1:0);
+    }
+  }
+  box(cx-w+1,2,zf-3,cx+w-1,hgt-3,zf-3,P.bronze,0,.09);     // 铜门
+  box(cx-1,3,zf-3,cx+1,hgt-5,zf-3,'#6a4a20');
+  setV(cx,hgt-5,zf-3,P.goldHi,2);
+  for(let s=1;s<=3;s++)                                    // 台阶
+    box(cx-w-s,0,zf+s,cx+w+s,0,zf+s,P.stoneLo,0,.04);
+}
+
+/* ═══════════════ 中殿 + 唱诗班（共用轮廓生成器）═══════════════ */
+function naveBlock(zA,zB){
+  /* 侧廊体外壳：x ±17 高13；歇山坡顶内19外13 */
+  for(let z=zA;z<=zB;z++){
+    const rel=z-zA;
+    for(const sd of[-1,1]){
+      const xo=sd*17;
+      for(let y=1;y<=13;y++)setV(xo,y,z,P.stone,0,.07);
+      if(rel%10===0||rel===zB-zA)
+        for(let y=1;y<=13;y++){setV(xo+sd,y,z,P.stoneHi);setV(xo-sd,y,z,P.stoneHi);}
+      for(const yy of[6,12])setV(xo,yy,z,P.stoneHi,0,.03);
+      /* 歇山坡 */
+      for(let xx=sd*8;xx!==xo+sd;xx+=sd){
+        const t=Math.abs(xx-8*sd)/9;
+        const ry=Math.round(19-6*t);
+        for(let y=13;y<=ry;y++)
+          setV(xx,y,z,y===ry?((xx+z)%5?P.roof:P.roofHi):P.roofLo,0,.05);
+      }
+    }
+  }
+  /* 侧廊长条窗：每跨两扇细长联窗 */
+  for(let b=0;b<4;b++){
+    const zc=zA+5+b*10;
+    for(const sd of[-1,1]){
+      for(const oz of[-2,2]){
+        box(sd*17,4,zc+oz,sd*17,12,zc+oz,P.shadow);
+        lancetWinX(zc+oz,5,sd*17,3,7,(oz<0?P.glassBlue:P.glassCyan),P.stoneHi);
+      }
+    }
+  }
+  /* 天窗层墙体 x±7 y19..27 */
+  for(let z=zA;z<=zB;z++){
+    const rel=z-zA;
+    for(const sd of[-1,1]){
+      const xw=sd*7;
+      for(let y=19;y<=27;y++)setV(xw,y,z,(rel%10===0)?P.stoneHi:P.stone,0,.05);
+    }
+  }
+  /* 高侧窗 */
+  for(let b=0;b<4;b++){
+    const zc=zA+5+b*10;
+    for(const sd of[-1,1]){
+      lancetWinX(zc-1,20,sd*7,5,6,P.glassBlue,P.stoneHi);
+      lancetWinX(zc+1,20,sd*7,5,6,P.glassCyan,P.stoneHi);
+    }
+  }
+  /* 中央两坡主屋顶：脊38 */
+  for(let z=zA-1;z<=zB+1;z++){
+    for(let x=-7;x<=7;x++){
+      const ridgeY=Math.round(38-19*Math.abs(x)/7);
+      for(let y=19;y<=ridgeY;y++){
+        if(y===ridgeY)setV(x,y,z,Math.abs(x)<2?P.roofHi:P.roof,0,.05);
+        else if(Math.abs(x)>=6)setV(x,y,z,P.roofLo,0,.05);
+      }
+    }
+  }
+  for(let z=zA;z<=zB;z+=5){                                 // 脊饰金焰
+    setV(0,39,z,P.roof);setV(0,40,z,P.gold,2);setV(0,41,z,P.goldHi,2);
+  }
+}
+
+/* ═══════════════ 飞扶壁 ═══════════════ */
+function buildButtresses(){
+  const zA=CROSS_Z+12;
+  for(let b=0;b<4;b++){
+    const zc=zA+b*10+4;
+    if(zc>FZ-10)continue;
+    for(const sd of[-1,1]){
+      const px=sd*20;
+      column(px,1,16,zc-1);column(px,1,16,zc+1);           // 双片墩
+      box(px-0,16,zc-1,px+sd,17,zc+1,P.stone);
+      pinnacle(px+sd,18,zc,8,P.stone);
+      flyArc(px+sd,26,zc,sd*8,17,false);                   // 上重飞券
+      flyArc(px+sd,21,zc+3,sd*8,14,true);                  // 下重飞券
+      setV(sd*21,16,zc,P.stoneDeep);                       // 吐水兽
+      setV(sd*22,15,zc,P.stoneDeep);
+    }
+  }
+  function flyArc(px,yP,zc,ex,yE,lower){
+    for(let i=0;i<=8;i++){
+      const t=i/8;
+      const x=Math.round(px+(ex-px)*t);
+      const y=Math.round(yP+(yE-yP)*t+Math.sin(t*Math.PI)*(lower?2.4:3.6));
+      setV(x,y,zc,lower?P.stoneMid:P.stone,0,.04);
+    }
+  }
+  /* 耳堂端各一对 */
+  for(const sd of[-1,1])for(const dz of[-4,4]){
+    const px=sd*25,pcz=CROSS_Z+dz;
+    column(px,1,15,pcz-1);column(px,1,15,pcz+1);
+    box(px,15,pcz-1,px+sd,16,pcz+1,P.stone);
+    pinnacle(px+sd,17,pcz,7,P.stone);
+    for(let i=0;i<=8;i++){
+      const t=i/8;
+      setV(Math.round(px+(sd*9-px)*t),Math.round(24+(16-24)*t+Math.sin(t*Math.PI)*3.4),pcz,P.stone,0,.04);
+    }
+  }
+}
+
+/* ═══════════════ 耳堂 ═══════════════ */
+function buildTransept(){
+  const TX=33, TH=26, zh=9, zc=CROSS_Z;
+  for(let x=-TX;x<=TX;x++){
+    if(Math.abs(x)<9)continue;
+    for(let z=zc-zh;z<=zc+zh;z++){
+      const nearEnd=Math.abs(x)>TX-2, zEnd=Math.abs(z-zc)>zh-2;
+      if(!(nearEnd||zEnd))continue;
+      for(let y=1;y<=TH;y++){
+        const belt=((x+100)%6===0)&&nearEnd;
+        setV(x,y,z,belt?P.stoneHi:P.stone,0,.06);
+      }
+    }
+  }
+  /* 屋面人字坡沿 x 展开（跨过交叉部，中段留给中央小尖塔基座） */
+  for(let x=-TX;x<=TX;x++){
+    for(let dz=-zh;dz<=zh;dz++){
+      const t=Math.abs(dz)/zh;
+      const ry=Math.round(TH+7-9*t);
+      for(let y=TH;y<=ry;y++){
+        if(y===ry)setV(x,y,zc+dz,Math.abs(dz)<1?P.roofHi:P.roof,0,.05);
+        else if(Math.abs(dz)>=zh-1)setV(x,y,zc+dz,P.roofLo,0,.05);
+      }
+    }
+  }
+  for(let x=-TX+3;x<=TX-3;x+=6){
+    if(Math.abs(x)<10)continue;
+    setV(x,TH+8,zc,P.gold,2);setV(x,TH+9,zc,P.goldHi,2);
+  }
+  /* 两端立面：玫瑰窗 + 大门 + 山花 + 十字 */
+  for(const sd of[-1,1]){
+    const fx=sd*TX;
+    roseWindow(fx,zc,20,5,'x');
+    box(fx-sd,2,zc-4,fx,9,zc+4,P.shadow);
+    lancetWinZ(zc,3,fx-sd,5,7,P.glassBlue,P.stoneHi);
+    for(let dy=0;dy<10;dy++){
+      const hw=Math.round(9*(1-dy/10));
+      for(let dz=-hw;dz<=hw;dz++){
+        const edge=Math.abs(dz)>=hw||dy===0||dy===9;
+        setV(fx,TH+2+dy,zc+dz,edge?P.stoneHi:P.stone,0,.04);
+      }
+    }
+    box(fx,TH+12,zc,fx,TH+14,zc,P.goldHi,2);
+    setV(fx-1,TH+13,zc,P.goldHi,2);setV(fx+1,TH+13,zc,P.goldHi,2);
+    /* 端墙角隅小尖塔 */
+    for(const pz of[zc-zh+1,zc+zh-1]){
+      column(fx-sd*1,TH+2,4,pz,P.stone);
+      pinnacle(fx-sd*2,TH+6,pz,7,P.stone);
+    }
+  }
+}
+
+/* —— 玫瑰窗：十二放射瓣 + 三色拼贴 —— */
+function roseWindow(a,b,cy,r,axis){
+  for(let du=-r;du<=r;du++)for(let dv=-r;dv<=r;dv++){
+    const dist=Math.sqrt(du*du+dv*dv);
+    if(dist>r)continue;
+    const bin=Math.floor(((Math.atan2(dv,du)+Math.PI)/(Math.PI*2))*12);
+    let col,em=1;
+    if(dist>=r-.5){col=P.stoneHi;em=0;}
+    else if(bin%3===0)col=P.glassRed;
+    else if(bin%3===1)col=P.glassBlue;
+    else col=P.glassGold;
+    if(bin%2===0&&dist>r*.25&&em)col=P.glassGold;
+    if(dist<=1.2)col='#fff2c0';
+    if(axis==='x')setV(a,cy+dv,b+du,col,em);
+    else setV(a+du,cy+dv,b,col,em);
+  }
+  for(const[ox,oy]of[[r+1,0],[-r-1,0],[0,r+1],[0,-r-1]]){
+    if(axis==='x')setV(a,cy+oy,b+ox,P.stoneHi);
+    else setV(a+ox,cy+oy,b,P.stoneHi);
+  }
+}
+
+/* ═══════════════ 十字交叉部细长小尖塔 ═══════════════ */
+function buildCrossingSpire(){
+  const cz=CROSS_Z;
+  box(-2,38,cz-2,2,43,cz+2,P.stone,0,.05);
+  for(let y=38;y<=43;y++)for(let dx=-2;dx<=2;dx++)for(let dz=-2;dz<=2;dz++)
+    if(Math.abs(dx)===2&&Math.abs(dz)===2)map.delete((dx)+','+y+','+(cz+dz));
+  latticeSpire(0,44,cz,2,64);
+}
+
+/* ═══════════════ 后殿七礼拜堂（Chevet）═══════════════ */
+function buildApse(){
+  const cy=APSE_CZ,R=APSE_R;
+  const degToRad=d=>d*Math.PI/180;
+  /* 半圆双层壳：θ 扫过东半球（z≤cy） */
+  for(let deg=0;deg<=180;deg+=3){
+    const rad=degToRad(deg);
+    const ca=Math.cos(rad),sa=-Math.sin(rad);          // sa 取负 → 后半圆
+    const wx=Math.round(R*ca),wz=Math.round(cy+R*sa);
+    for(let y=1;y<=13;y++)setV(wx,y,wz,P.stone,0,.07);
+    const wx2=Math.round((R-2)*ca),wz2=Math.round(cy+(R-2)*sa);
+    for(let y=14;y<=26;y++)setV(wx2,y,wz2,P.stone,0,.07);
+  }
+  /* 内芯填实避免穿帮 */
+  for(let rr=0;rr<R-1;rr++)for(let deg=0;deg<=180;deg+=4){
+    const rad=degToRad(deg);
+    const wx=Math.round(rr*Math.cos(rad)),wz=Math.round(cy-rr*Math.sin(rad));
+    for(let y=1;y<=13;y++)setV(wx,y,wz,P.stoneLo,0,.06);
+  }
+  /* 回廊层高大尖拱窗 每15° */
+  for(let deg=5;deg<176;deg+=12){
+    const rad=degToRad(deg);
+    const ca=Math.cos(rad),sa=-Math.sin(rad);
+    const wx=Math.round((R-3)*ca),wz=Math.round(cy+(R-3)*sa);
+    for(let dy=0;dy<=7;dy++){
+      const hw=lancetHW(dy,5,7);
+      for(let o=-hw;o<=hw;o++){
+        const tx=Math.round(wx-o*sa),tz=Math.round(wz+o*ca);
+        const fr=Math.abs(o)===hw||dy===0||dy===7||o===0;
+        setV(tx,15+dy,tz,fr?P.stoneHi:(((o+dy)&3)<2?P.glassBlue:P.glassRed),fr?0:1);
+      }
+    }
+  }
+  /* 七座放射礼拜堂 */
+  for(let k=-3;k<=3;k++){
+    const rad=Math.PI*(k*0.1667);                      // −90°..+90° 映射东向扇区
+    const ca=Math.cos(rad),sa=-Math.sin(rad);
+    const chx=Math.round((R+4)*ca),chz=Math.round(cy+(R+4)*sa);
+    for(let dx=-3;dx<=3;dx++)for(let dz=-3;dz<=3;dz++){
+      if(Math.abs(dx)!==3&&Math.abs(dz)!==3)continue;
+      const wx=chx+dx,wz=chz+dz;
+      for(let y=1;y<=10;y++)setV(wx,y,wz,P.stone,0,.08);
+    }
+    const ox=Math.round(chx+ca*3),oz=Math.round(chz+sa*3);
+    for(let dy=0;dy<=5;dy++){                          // 礼拜堂外凸窗
+      const hw=lancetHW(dy,3,5);
+      for(let o=-1;o<=1;o++){
+        const tx=Math.round(ox-o*sa),tz=Math.round(oz+o*ca);
+        const fr=o!==0||dy===0||dy===5;
+        setV(tx,2+dy,tz,fr?P.stoneHi:P.glassBlue,fr?0:1);
+      }
+    }
+    for(let dy=0;dy<=5;dy++){                          // 锥顶
+      const r=3.4*(1-dy/5),ri=Math.ceil(r);
+      for(let dx=-ri;dx<=ri;dx++)for(let dz=-ri;dz<=ri;dz++){
+        const q=dx*dx+dz*dz;
+        if(q<=r*r&&q>(r-1.4)*(r-1.4))setV(chx+dx,11+dy,chz+dz,P.roofLo,0,.06);
+      }
+    }
+    pinnacle(chx,16,chz,6,P.stone);
+    const sx2=Math.round(chx+ca*5),sz2=Math.round(chz+sa*5);
+    box(sx2-1,1,sz2-1,sx2+1,9,sz2+1,P.stoneLo,0,.07);  // 放射支撑墩
+    pinnacle(sx2,10,sz2,7,P.stone);
+  }
+  /* 后殿锥形大屋顶（只扫东半区 dz≤2 避免插入唱诗班） */
+  for(let dy=0;dy<=11;dy++){
+    const rr=Math.max(0,(R-1)*(1-dy/11)),ri=Math.ceil(rr);
+    for(let dx=-ri;dx<=ri;dx++)for(let dz=-ri;dz<=ri;dz++){
+      const q=dx*dx+dz*dz;
+      if(q>rr*rr)continue;
+      if(dz>1)continue;
+      if(q>(rr-1.4)*(rr-1.4))
+        setV(dx,27+dy,cy+dz,(dx+dz)&2?P.roofLo:P.roof,0,.05);
+    }
+  }
+  setV(0,39,cy,P.goldHi,2);
+  /* 外环回廊栏墩 + 尖塔火焰环 */
+  for(let deg=0;deg<=180;deg+=7){
+    const rad=degToRad(deg);
+    const wx=Math.round((R+8)*Math.cos(rad)),wz=Math.round(cy-(R+8)*Math.sin(rad));
+    column(wx,1,8,wz,P.stoneMid,0,.07);
+    pinnacle(wx,9,wz,6,P.stone);
+  }
+}
+
+/* ═══════════════ 广场 · 台基 · 灯柱 · 锦柏 ═══════════════ */
+function buildPlaza(){
+  for(let x=-84;x<=84;x++)for(let z=-84;z<=96;z++){
+    const d=Math.hypot(x,(z-4)*0.92);
+    if(d>80)continue;
+    setV(x,tileY(x,z),z,
+      (Math.abs(d-46)%12<1.2)?P.plazaRing:
+      (((x>>1)+(z>>1))&1)?P.plazaA:P.plazaB,0,.045);
+  }
+  for(let deg=0;deg<360;deg+=2.4){                        // 三圈女儿墙
+    const rad=deg*Math.PI/180;
+    for(const[r]of[[80],[71],[63]]){
+      const x=Math.round(r*Math.cos(rad)),z=Math.round(4+r*0.92*Math.sin(rad));
+      const gy=tileY(x,z);
+      box(x,gy,z,x,gy+2,z,P.stoneLo,0,.06);
+    }
+  }
+  const lamps=[];
+  for(let i=0;i<5;i++){lamps.push([-30,8+i*9]);lamps.push([30,8+i*9]);}
+  lamps.push([-14,50],[14,50],[0,56]);
+  for(const[lx,lz]of lamps){
+    const gy=tileY(lx,lz);
+    box(lx-1,gy,lz-1,lx+1,gy,lz+1,P.iron);
+    column(lx,gy+1,7,lz,P.iron);
+    setV(lx,gy+8,lz,P.goldHi,2);
+    setV(lx-1,gy+8,lz,P.lampGlow,2);setV(lx+1,gy+8,lz,P.lampGlow,2);
+    setV(lx,gy+8,lz-1,P.lampGlow,2);setV(lx,gy+8,lz+1,P.lampGlow,2);
+    setV(lx,gy+9,lz,P.iron);
+  }
+  for(let i=0;i<30;i++){                                  // 锥柏环绕
+    const a=i/30*Math.PI*2+hash3(i,7,13)*.45;
+    const rr=67+hash3(i,3,9)*13;
+    const tx=Math.round(Math.cos(a)*rr),tz=Math.round(4+Math.sin(a)*rr*.92);
+    if(hash3(tx,0,tz)<.35)continue;
+    const gy=tileY(tx,tz);
+    const th=9+(hash3(tx,1,tz)*6|0);
+    column(tx,gy+1,th,tz,P.trunk,0,.06);
+    for(let dy=1;dy<th+3;dy++){
+      const r=Math.max(.6,(th+3-dy)*.55),ri=Math.ceil(r);
+      for(let dx=-ri;dx<=ri;dx++)for(let dz=-ri;dz<=ri;dz++){
+        if(dx*dx+dz*dz>r*r)continue;
+        const h=hash3(tx+dx,dy,tz+dz);
+        setV(tx+dx,gy+1+dy,tz+dz,h<.3?P.leaf3:h<.75?P.leaf1:P.leaf2,0,.05);
+      }
+    }
+  }
+}
+
+/* ═══════════════ 悬浮岩岛 ═══════════════ */
+const floatRocks=[];
+function buildIsland(){
+  const depth=42;
+  for(let d=0;d<depth;d++){
+    const jit=hash3(d,55,91)*2.4;
+    const RX=84-d*1.02+jit,RZm=(92-d*1.02+jit)*.94;
+    if(RX<2||RZm<2)break;
+    for(let x=-Math.ceil(RX);x<=RX;x++)for(let z=-Math.ceil(RZm);z<=RZm+6;z++){
+      const zz=z-4;
+      const dd=Math.hypot(x/RX,zz/RZm);
+      if(dd>1||dd<.93&&d>0&&d<depth-3)continue;
+      setV(x,-1-d,z,P.rock[Math.min(3,(d/5)|0)],4,.09);
+    }
+  }
+  for(let i=0;i<24;i++){                                  // 岛底钟乳石
+    const a=hash3(i,17,3)*Math.PI*2,rr=hash3(i,5,8)*20;
+    const tx=Math.round(Math.cos(a)*rr),tz=Math.round(4+Math.sin(a)*rr);
+    const len=4+(hash3(i,9,2)*9|0);
+    for(let k=0;k<len;k++){
+      setV(tx+Math.round(Math.sin(k*.8+i)*1.2),-12-k,tz+Math.round(Math.cos(a+k)*1.1),P.rock[k&3],4,.1);
+    }
+  }
+  for(let deg=0;deg<360;deg+=2.6){                        // 草沿与垂藤
+    const rad=deg*Math.PI/180;
+    const x=Math.round(82*Math.cos(rad)),z=Math.round(4+88*.94*Math.sin(rad));
+    setV(x,0,z,P.grass,3,.08);
+    if(hash3(x,1,z)<.32){
+      const vl=2+(hash3(x,2,z)*7|0);
+      for(let k=0;k<vl;k++)setV(x,-2-k,z,k===vl-1?'#8a5a3a':vineCol(k),3);
+    }
+  }
+  /* 卫星浮岩 */
+  const defs=[[106,26,-26,5],[-108,18,26,6],[96,34,54,4]];
+  for(const[sx,sy,sz,pr]of defs){
+    const geo=new THREE.BoxGeometry(1,1,1);
+    const im=new THREE.InstancedMesh(geo,new THREE.MeshStandardMaterial({roughness:.92}),pr*pr*10+60);
+    let idx=0;const dm=new THREE.Object3D(),cl=new THREE.Color();
+    for(let dx=-pr;dx<=pr;dx++)for(let dy=-pr;dy<=Math.ceil(pr*.55);dy++)for(let dz=-pr;dz<=pr;dz++){
+      if(Math.hypot(dx/pr,dy/pr*1.55,dz/pr)>1)continue;
+      dm.position.set(sx+dx,sy+dy,sz+dz);dm.updateMatrix();
+      im.setMatrixAt(idx,dm.matrix);
+      cl.set(Math.hypot(dx/pr,dy/pr*1.55,dz/pr)>.82?P.grass:P.rock[2+((dy+9)%2)]);
+      im.setColorAt(idx++,cl);
+    }
+    im.count=idx;im.castShadow=true;im.receiveShadow=true;
+    scene.add(im);
+    floatRocks.push({mesh:im,sy});
+  }
+}
+
+/* ═══════════════ 云海 ═══════════════ */
+const cloudGroup=new THREE.Group();scene.add(cloudGroup);
+function buildClouds(){
+  for(let ci=0;ci<16;ci++){
+    const a=hash3(ci,33,77)*Math.PI*2,rr=55+hash3(ci,44,11)*72;
+    const cx=Math.cos(a)*rr,cz=4+Math.sin(a)*rr,cy=-15-hash3(ci,55,22)*13;
+    const geo=new THREE.BoxGeometry(1,1,1);
+    const mat=new THREE.MeshStandardMaterial({roughness:1,transparent:true,opacity:.93,
+      emissive:new THREE.Color('#caa0bc'),emissiveIntensity:.13});
+    const im=new THREE.InstancedMesh(geo,mat,220);
+    const dm=new THREE.Object3D(),cl=new THREE.Color();
+    let idx=0,seed=ci*97+5;
+    for(let i=0;i<220;i++){
+      const rx=(hash3(seed,i,1)-.5)*26,rz=(hash3(seed,i,2)-.5)*18;
+      const ry=Math.pow(hash3(seed,i,3),1.35)*5;
+      if(rx*rx/165+rz*rz/85>1)continue;
+      dm.position.set(cx+rx,cy+ry,cz+rz);
+      dm.scale.setScalar(.9+hash3(seed,i,4)*1.35);
+      dm.updateMatrix();
+      im.setMatrixAt(idx,dm.matrix);
+      cl.set(ry>3.4?P.cloud:P.cloudWarm).multiplyScalar(.66+ry*.07);
+      im.setColorAt(idx++,cl);
+    }
+    im.count=idx;cloudGroup.add(im);
+  }
+  for(const[cx,cz]of[[-135,-10],[10,-155],[150,15],[35,168],[-125,125],[128,-125]]){
+    const im=new THREE.InstancedMesh(new THREE.BoxGeometry(2.4,1.2,2.4),
+      new THREE.MeshStandardMaterial({roughness:1,transparent:true,opacity:.85,
+        emissive:new THREE.Color('#b88ab0'),emissiveIntensity:.1}),90);
+    const dm=new THREE.Object3D(),cl=new THREE.Color();
+    let idx=0;
+    for(let i=0;i<90;i++){
+      dm.position.set(cx+(hash3(cx|0,i,9)-.5)*58,-11-hash3(i,cx|0,3)*8,cz+(hash3(cx|0,i,8)-.5)*42);
+      dm.updateMatrix();im.setMatrixAt(idx,dm.matrix);
+      cl.set(P.cloudWarm).multiplyScalar(.6);im.setColorAt(idx++,cl);
+    }
+    im.count=idx;cloudGroup.add(im);
+  }
+}
+
+/* ═══════════════ 飞鸟 ═══════════════ */
+const birds=[];const birdMat=new THREE.MeshBasicMaterial({color:0x1c1428});
+function spawnBirds(){
+  for(let i=0;i<7;i++){
+    const b=new THREE.Group();
+    const wl=new THREE.Mesh(new THREE.BoxGeometry(2.6,.28,.5),birdMat);
+    const wr=wl.clone();
+    wl.position.x=-1.3;wr.position.x=1.3;
+    b.add(wl,wr);scene.add(b);
+    birds.push({g:b,a:i*.9,r:38+i*6,h:48+i*3.4,s:.006+hash3(i,3,5)*.004,
+                ph:hash3(i,1,7)*6,wings:[wl,wr]});
+  }
+}
+
+/* ═══════════════ 天穹 ═══════════════ */
+function buildSky(){
+  const mat=new THREE.ShaderMaterial({
+    side:THREE.BackSide,depthWrite:false,
+    uniforms:{
+      top:{value:new THREE.Color('#2b1055')},
+      mid:{value:new THREE.Color('#8a3c78')},
+      bot:{value:new THREE.Color('#e8823e')},
+      sunDir:{value:new THREE.Vector3(-.6,.32,.52).normalize()},
+      sunCol:{value:new THREE.Color('#ffbe66')},
+    },
+    vertexShader:`varying vec3 vp;void main(){vp=position;
+      gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+    fragmentShader:`uniform vec3 top,mid,bot,sunDir,sunCol;varying vec3 vp;
+      void main(){
+        vec3 d=normalize(vp);float h=d.y;
+        vec3 col=h>0.?mix(mid,top,pow(h,.72)):mix(mid,bot,pow(-h,.6));
+        float s=max(dot(d,sunDir),0.);
+        col+=sunCol*pow(s,340.)*1.6;
+        col+=sunCol*pow(s,14.)*.30;
+        gl_FragColor=vec4(col,1.);
+      }`,
+  });
+  scene.add(new THREE.Mesh(new THREE.SphereGeometry(1100,48,32),mat));
+}
+
+/* ═══════════════ 光照 ═══════════════ */
+function setupLights(){
+  const sun=new THREE.DirectionalLight(0xffb46a,2.3);
+  sun.position.set(-132,86,152);                  // 视点左前方黄昏低阳
+  sun.target.position.set(0,24,0);scene.add(sun.target);
+  sun.castShadow=true;
+  Object.assign(sun.shadow.camera,{left:-140,right:140,top:150,bottom:-95,near:20,far:480});
+  sun.shadow.mapSize.set(2048,2048);
+  sun.shadow.bias=-0.0012;sun.shadow.normalBias=.7;
+  scene.add(sun);
+
+  scene.add(new THREE.HemisphereLight(0xc06a9a,0x2c1836,.5));
+  const fill=new THREE.DirectionalLight(0x7a5ec2,.32);
+  fill.position.set(95,55,-75);scene.add(fill);
+  const fp=new THREE.PointLight(0xffca7a,110,130,1.8);
+  fp.position.set(0,17,FZ+20);scene.add(fp);
+  const fl=new THREE.PointLight(0xffe0a8,30,55,2);
+  fl.position.set(0,10,FZ+9);scene.add(fl);
+}
+
+/* ═══════════════ 实例化装配 ═══════════════ */
+function assemble(){
+  const bucketDef=[
+    {rough:.82,metal:.03},
+    {rough:.35,metal:0,emissive:'#7f93d8',emissiveIntensity:.5},
+    {rough:.3,metal:.6,emissive:'#ffb84e',emissiveIntensity:1.15},
+    {rough:1,metal:0},
+    {rough:.95,metal:.02},
+  ];
+  const lists=bucketDef.map(()=>[]);
+  for(const[,v]of map)lists[v.b].push(v.c);
+  const geo=new THREE.BoxGeometry(1,1,1);
+  const dm=new THREE.Object3D(),cl=new THREE.Color();
+  let total=0;
+  bucketDef.forEach((bd,bi)=>{
+    const L=lists[bi];if(!L.length)return;
+    const mat=new THREE.MeshStandardMaterial({
+      color:0xffffff,roughness:bd.rough,metalness:bd.metal,
+      emissive:bd.emissive?new THREE.Color(bd.emissive):new THREE.Color(0),
+      emissiveIntensity:bd.emissiveIntensity||0});
+    const im=new THREE.InstancedMesh(geo,mat,L.length);
+    let i=0;
+    for(const[k,v]of map){
+      if(v.b!==bi)continue;
+      const[x,y,z]=k.split(',').map(Number);
+      dm.position.set(x+.5,y+.5,z+.5);dm.updateMatrix();
+      im.setMatrixAt(i,dm.matrix);
+      im.setColorAt(i,v.c);i++;
+    }
+    im.instanceMatrix.needsUpdate=true;
+    if(im.instanceColor)im.instanceColor.needsUpdate=true;
+    im.castShadow=bi!==2;
+    im.receiveShadow=true;
+    scene.add(im);
+    total+=i;
+  });
+  document.querySelector('.stat').textContent=
+    `${total.toLocaleString()} 体素 · 左键旋转 · 滚轮缩放 · 右键平移`;
+  console.log('total voxels:',total);
+}
+
+/* ═══════════════ 组装 ═══════════════ */
+try{
+  buildPlaza();
+  naveBlock(0,FZ-5);              // 中殿
+  naveBlock(CROSS_Z-20,CROSS_Z);  // 唱诗班席延续
+  buildFacadeScreen();
+  buildTower(-TOWER_CX);buildTower(TOWER_CX);
+  buildButtresses();
+  buildTransept();
+  buildCrossingSpire();
+  buildApse();
+  buildIsland();
+  buildClouds();
+  buildSky();
+  setupLights();
+  spawnBirds();
+  assemble();
+}catch(err){
+  document.getElementById('loading').textContent='构建出错：'+err.message;
+  throw err;
+}
+const loaderEl=document.getElementById('loading');
+loaderEl.style.opacity=0;setTimeout(()=>loaderEl.remove(),900);
+
+/* ═══════════════ 动画循环 ═══════════════ */
+const clock=new THREE.Clock();
+function tick(){
+  requestAnimationFrame(tick);
+  const t=clock.getElapsedTime();
+  cloudGroup.children.forEach((m,i)=>{
+    m.position.x=Math.sin(t*.02+i)*3.2;
+    m.position.z=Math.cos(t*.016+i*1.7)*2.6;
+  });
+  floatRocks.forEach((r,i)=>{
+    r.mesh.position.y=Math.sin(t*.4+i*2.1)*2.2;
+    r.mesh.rotation.y=t*.03*(i%2?1:-1);
+  });
+  birds.forEach(b=>{
+    b.a+=b.s;
+    b.g.position.set(Math.cos(b.a)*b.r,b.h+Math.sin(t*.7+b.ph)*3,Math.sin(b.a)*b.r+6);
+    b.g.rotation.y=-b.a;
+    const f=Math.sin(t*9+b.ph)*.55;
+    b.wings[0].rotation.z=f;b.wings[1].rotation.z=-f;
+  });
+  controls.update();
+  composer.render();
+}
+tick();
+
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+  composer.setSize(innerWidth,innerHeight);
+});
+</script>
+</body>
+</html>

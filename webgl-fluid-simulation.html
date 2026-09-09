@@ -1,0 +1,1468 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#000000" />
+    <title>WebGL Fluid Simulation</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --panel: rgba(8, 10, 18, 0.76);
+        --panel-border: rgba(255, 255, 255, 0.13);
+        --line: rgba(255, 255, 255, 0.1);
+        --muted: rgba(239, 244, 255, 0.58);
+        --text: #f7f8ff;
+        --accent: #7df9ff;
+        --accent-2: #c58cff;
+      }
+
+      * { box-sizing: border-box; }
+
+      html,
+      body {
+        width: 100%;
+        min-height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #000;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      button,
+      input,
+      select { font: inherit; }
+
+      #fluid-canvas {
+        position: fixed;
+        inset: 0;
+        display: block;
+        width: 100vw;
+        height: 100vh;
+        background: #000;
+        cursor: crosshair;
+        touch-action: none;
+      }
+
+      .brand {
+        position: fixed;
+        z-index: 2;
+        top: max(22px, env(safe-area-inset-top));
+        left: max(24px, env(safe-area-inset-left));
+        pointer-events: none;
+        user-select: none;
+        text-shadow: 0 2px 22px rgba(0, 0, 0, 0.72);
+      }
+
+      .brand-kicker {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 9px;
+        color: rgba(255, 255, 255, 0.76);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.19em;
+        text-transform: uppercase;
+      }
+
+      .brand-kicker::before {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 16px var(--accent), 0 0 32px rgba(125, 249, 255, 0.45);
+        content: "";
+      }
+
+      h1 {
+        margin: 0;
+        color: var(--text);
+        font-size: clamp(24px, 3.2vw, 46px);
+        font-weight: 760;
+        letter-spacing: -0.065em;
+        line-height: 0.88;
+      }
+
+      h1 em {
+        color: var(--accent);
+        font-family: ui-serif, Georgia, serif;
+        font-weight: 400;
+      }
+
+      .hint {
+        position: fixed;
+        z-index: 2;
+        bottom: max(20px, env(safe-area-inset-bottom));
+        left: max(24px, env(safe-area-inset-left));
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        max-width: min(520px, calc(100vw - 48px));
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 11px;
+        letter-spacing: 0.035em;
+        line-height: 1.4;
+        pointer-events: none;
+        user-select: none;
+        transition: opacity 520ms ease, transform 520ms ease;
+      }
+
+      .hint.is-faded {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      .hint-key {
+        display: inline-grid;
+        min-width: 24px;
+        height: 20px;
+        padding: 0 5px;
+        place-items: center;
+        border: 1px solid rgba(255, 255, 255, 0.26);
+        border-radius: 5px;
+        background: rgba(0, 0, 0, 0.32);
+        color: #fff;
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+      }
+
+      .control-panel {
+        position: fixed;
+        z-index: 5;
+        top: max(18px, env(safe-area-inset-top));
+        right: max(18px, env(safe-area-inset-right));
+        width: min(355px, calc(100vw - 36px));
+        color: var(--text);
+      }
+
+      .panel-toggle {
+        display: flex;
+        width: 100%;
+        align-items: center;
+        justify-content: space-between;
+        border: 1px solid var(--panel-border);
+        border-radius: 14px;
+        background: linear-gradient(135deg, rgba(19, 24, 39, 0.84), rgba(5, 6, 12, 0.78));
+        box-shadow: 0 16px 45px rgba(0, 0, 0, 0.3), inset 0 1px rgba(255, 255, 255, 0.08);
+        color: #fff;
+        cursor: pointer;
+        padding: 12px 13px 12px 15px;
+        text-align: left;
+        -webkit-backdrop-filter: blur(18px) saturate(1.25);
+        backdrop-filter: blur(18px) saturate(1.25);
+      }
+
+      .panel-toggle:hover { border-color: rgba(125, 249, 255, 0.5); }
+
+      .panel-title {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .panel-title::before {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        box-shadow: 0 0 12px rgba(125, 249, 255, 0.75);
+        content: "";
+      }
+
+      .toggle-chevron {
+        width: 24px;
+        height: 24px;
+        display: grid;
+        place-items: center;
+        border-radius: 8px;
+        color: rgba(255, 255, 255, 0.78);
+        font-size: 17px;
+        line-height: 1;
+        transition: transform 250ms ease, background 250ms ease;
+      }
+
+      .panel-toggle:hover .toggle-chevron { background: rgba(255, 255, 255, 0.08); }
+      .control-panel.collapsed .toggle-chevron { transform: rotate(-90deg); }
+
+      .panel-body {
+        max-height: calc(100vh - 88px - env(safe-area-inset-top));
+        margin-top: 8px;
+        overflow: auto;
+        border: 1px solid var(--panel-border);
+        border-radius: 14px;
+        background: var(--panel);
+        box-shadow: 0 18px 54px rgba(0, 0, 0, 0.38), inset 0 1px rgba(255, 255, 255, 0.06);
+        padding: 8px 0;
+        scrollbar-color: rgba(125, 249, 255, 0.45) transparent;
+        transition: max-height 300ms ease, opacity 210ms ease, transform 300ms ease, margin 300ms ease, padding 300ms ease;
+        -webkit-backdrop-filter: blur(20px) saturate(1.2);
+        backdrop-filter: blur(20px) saturate(1.2);
+      }
+
+      .control-panel.collapsed .panel-body {
+        max-height: 0;
+        margin-top: 0;
+        overflow: hidden;
+        opacity: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        pointer-events: none;
+        transform: translateY(-6px);
+      }
+
+      .panel-section {
+        padding: 10px 15px 12px;
+      }
+
+      .panel-section + .panel-section { border-top: 1px solid var(--line); }
+
+      .section-heading {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        margin: 0 0 10px;
+        color: rgba(255, 255, 255, 0.48);
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .section-heading b {
+        color: rgba(255, 255, 255, 0.78);
+        font-size: 10px;
+        letter-spacing: 0.04em;
+        text-transform: none;
+      }
+
+      .control { margin-top: 10px; }
+      .control:first-of-type { margin-top: 0; }
+
+      .control-label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 6px;
+        color: rgba(255, 255, 255, 0.82);
+        font-size: 11px;
+        font-weight: 560;
+      }
+
+      .control-value {
+        min-width: 41px;
+        color: var(--accent);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 10px;
+        text-align: right;
+      }
+
+      select,
+      input[type="color"] {
+        width: 100%;
+        height: 31px;
+        border: 1px solid rgba(255, 255, 255, 0.13);
+        border-radius: 8px;
+        outline: none;
+        background: rgba(255, 255, 255, 0.065);
+        color: rgba(255, 255, 255, 0.9);
+        padding: 0 9px;
+      }
+
+      select:focus,
+      input[type="color"]:focus { border-color: rgba(125, 249, 255, 0.75); }
+
+      input[type="color"] {
+        padding: 3px;
+        cursor: pointer;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        height: 16px;
+        margin: 0;
+        accent-color: var(--accent);
+        cursor: ew-resize;
+      }
+
+      .switch-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 26px;
+        color: rgba(255, 255, 255, 0.84);
+        font-size: 11px;
+        font-weight: 560;
+      }
+
+      .switch {
+        position: relative;
+        width: 37px;
+        height: 21px;
+      }
+
+      .switch input {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        opacity: 0;
+      }
+
+      .switch-track {
+        position: absolute;
+        inset: 0;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.09);
+        cursor: pointer;
+        transition: background 180ms ease, border 180ms ease;
+      }
+
+      .switch-track::after {
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.72);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+        content: "";
+        transition: transform 180ms ease, background 180ms ease;
+      }
+
+      .switch input:checked + .switch-track {
+        border-color: rgba(125, 249, 255, 0.7);
+        background: rgba(100, 220, 246, 0.32);
+      }
+
+      .switch input:checked + .switch-track::after {
+        background: #fff;
+        transform: translateX(16px);
+      }
+
+      .action-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 7px;
+      }
+
+      .action-button {
+        min-height: 34px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 9px;
+        background: rgba(255, 255, 255, 0.065);
+        color: rgba(255, 255, 255, 0.83);
+        cursor: pointer;
+        font-size: 10px;
+        font-weight: 750;
+        letter-spacing: 0.025em;
+        transition: transform 170ms ease, background 170ms ease, border 170ms ease, color 170ms ease;
+      }
+
+      .action-button:hover {
+        border-color: rgba(125, 249, 255, 0.62);
+        background: rgba(125, 249, 255, 0.12);
+        color: #fff;
+        transform: translateY(-1px);
+      }
+
+      .action-button:active { transform: translateY(0); }
+      .action-button.is-active {
+        border-color: rgba(197, 140, 255, 0.78);
+        background: rgba(197, 140, 255, 0.18);
+        color: #fff;
+      }
+
+      .audio-status {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-top: 9px;
+        color: var(--muted);
+        font-size: 10px;
+      }
+
+      .audio-dot {
+        width: 7px;
+        height: 7px;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.25);
+      }
+
+      .audio-status.is-active .audio-dot {
+        background: #baf6c5;
+        box-shadow: 0 0 11px rgba(186, 246, 197, 0.88);
+      }
+
+      .audio-meter {
+        width: 46px;
+        height: 4px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12);
+      }
+
+      .audio-meter i {
+        display: block;
+        width: 0%;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--accent), var(--accent-2));
+        transition: width 80ms linear;
+      }
+
+      .failure-message {
+        position: fixed;
+        z-index: 10;
+        top: 50%;
+        left: 50%;
+        display: none;
+        width: min(360px, calc(100vw - 42px));
+        transform: translate(-50%, -50%);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 18px;
+        background: rgba(11, 13, 21, 0.88);
+        box-shadow: 0 25px 90px rgba(0, 0, 0, 0.6);
+        color: #fff;
+        padding: 22px;
+        text-align: center;
+      }
+
+      .failure-message strong { display: block; margin-bottom: 8px; }
+      .failure-message p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+
+      @media (max-width: 620px) {
+        .brand { top: max(18px, env(safe-area-inset-top)); left: max(18px, env(safe-area-inset-left)); }
+        .brand-kicker { margin-bottom: 7px; font-size: 8px; }
+        h1 { font-size: 27px; }
+        .hint { bottom: max(15px, env(safe-area-inset-bottom)); left: max(18px, env(safe-area-inset-left)); font-size: 9px; }
+        .control-panel { top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); width: min(340px, calc(100vw - 24px)); }
+        .panel-body { max-height: calc(100vh - 78px - env(safe-area-inset-top)); }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="fluid-canvas" aria-label="可交互的 WebGL 流体模拟画布"></canvas>
+
+    <div class="brand" aria-hidden="true">
+      <div class="brand-kicker">WebGL field study</div>
+      <h1>Fluid<br /><em>Lab</em></h1>
+    </div>
+
+    <div class="hint" id="interaction-hint" aria-hidden="true">
+      <span class="hint-key">DRAG</span>
+      <span>拖动或触摸画面注入流体 <span class="hint-key">P</span> 暂停 <span class="hint-key">SPACE</span> 随机喷溅</span>
+    </div>
+
+    <aside class="control-panel" id="control-panel" aria-label="流体模拟控制面板">
+      <button class="panel-toggle" id="panel-toggle" type="button" aria-expanded="true" aria-controls="panel-body">
+        <span class="panel-title">控制台</span>
+        <span class="toggle-chevron" aria-hidden="true">⌄</span>
+      </button>
+
+      <div class="panel-body" id="panel-body">
+        <section class="panel-section">
+          <p class="section-heading"><span>Simulation</span><b>模拟</b></p>
+
+          <div class="control">
+            <div class="control-label"><span>模拟分辨率</span></div>
+            <select id="sim-resolution" data-config="simResolution" aria-label="模拟分辨率">
+              <option value="64">64 · 轻量</option>
+              <option value="128" selected>128 · 平衡</option>
+              <option value="256">256 · 精细</option>
+            </select>
+          </div>
+
+          <div class="control">
+            <div class="control-label"><span>染料分辨率</span></div>
+            <select id="dye-resolution" data-config="dyeResolution" aria-label="染料分辨率">
+              <option value="256">256 · 轻量</option>
+              <option value="512" selected>512 · 平衡</option>
+              <option value="1024">1024 · 高保真</option>
+            </select>
+          </div>
+
+          <div class="control">
+            <div class="control-label"><span>密度消散</span><output class="control-value" data-readout="densityDissipation">0.985</output></div>
+            <input type="range" min="0.900" max="1" step="0.001" value="0.985" data-config="densityDissipation" aria-label="密度消散" />
+          </div>
+
+          <div class="control">
+            <div class="control-label"><span>速度消散</span><output class="control-value" data-readout="velocityDissipation">0.990</output></div>
+            <input type="range" min="0.850" max="1" step="0.001" value="0.990" data-config="velocityDissipation" aria-label="速度消散" />
+          </div>
+
+          <div class="control">
+            <div class="control-label"><span>压力</span><output class="control-value" data-readout="pressure">0.80</output></div>
+            <input type="range" min="0.10" max="1" step="0.01" value="0.80" data-config="pressure" aria-label="压力" />
+          </div>
+
+          <div class="control">
+            <div class="control-label"><span>旋度强度</span><output class="control-value" data-readout="curl">26</output></div>
+            <input type="range" min="0" max="60" step="1" value="26" data-config="curl" aria-label="旋度强度" />
+          </div>
+
+          <div class="control">
+            <div class="control-label"><span>喷溅半径</span><output class="control-value" data-readout="splatRadius">0.016</output></div>
+            <input type="range" min="0.003" max="0.050" step="0.001" value="0.016" data-config="splatRadius" aria-label="喷溅半径" />
+          </div>
+
+          <div class="control switch-row">
+            <span>着色效果</span>
+            <label class="switch"><input type="checkbox" checked data-config="shading" aria-label="着色效果" /><span class="switch-track"></span></label>
+          </div>
+
+          <div class="control switch-row">
+            <span>多彩模式</span>
+            <label class="switch"><input type="checkbox" checked data-config="colorful" aria-label="多彩模式" /><span class="switch-track"></span></label>
+          </div>
+
+          <div class="control">
+            <div class="control-label"><span>颜色更新速度</span><output class="control-value" data-readout="colorUpdateSpeed">0.60</output></div>
+            <input type="range" min="0" max="2" step="0.05" value="0.60" data-config="colorUpdateSpeed" aria-label="颜色更新速度" />
+          </div>
+
+          <div class="control switch-row">
+            <span>暂停动画</span>
+            <label class="switch"><input id="pause-toggle" type="checkbox" data-config="paused" aria-label="暂停动画" /><span class="switch-track"></span></label>
+          </div>
+        </section>
+
+        <section class="panel-section">
+          <p class="section-heading"><span>Light &amp; color</span><b>光影</b></p>
+
+          <div class="control">
+            <div class="control-label"><span>背景颜色</span><output class="control-value" id="background-readout">#000000</output></div>
+            <input id="background-color" type="color" value="#000000" data-config="background" aria-label="背景颜色" />
+          </div>
+
+          <div class="control switch-row">
+            <span>Bloom 泛光</span>
+            <label class="switch"><input type="checkbox" checked data-config="bloom" aria-label="Bloom 泛光" /><span class="switch-track"></span></label>
+          </div>
+
+          <div class="control">
+            <div class="control-label"><span>Bloom 阈值</span><output class="control-value" data-readout="bloomThreshold">0.58</output></div>
+            <input type="range" min="0.05" max="1.50" step="0.01" value="0.58" data-config="bloomThreshold" aria-label="Bloom 阈值" />
+          </div>
+
+          <div class="control">
+            <div class="control-label"><span>Bloom 强度</span><output class="control-value" data-readout="bloomIntensity">0.82</output></div>
+            <input type="range" min="0" max="2" step="0.01" value="0.82" data-config="bloomIntensity" aria-label="Bloom 强度" />
+          </div>
+
+          <div class="control switch-row">
+            <span>阳光射线</span>
+            <label class="switch"><input type="checkbox" data-config="sunrays" aria-label="阳光射线" /><span class="switch-track"></span></label>
+          </div>
+
+          <div class="control">
+            <div class="control-label"><span>射线密度</span><output class="control-value" data-readout="sunraysDensity">0.75</output></div>
+            <input type="range" min="0.10" max="1.50" step="0.01" value="0.75" data-config="sunraysDensity" aria-label="射线密度" />
+          </div>
+
+          <div class="control">
+            <div class="control-label"><span>射线强度</span><output class="control-value" data-readout="sunraysWeight">0.55</output></div>
+            <input type="range" min="0" max="2" step="0.01" value="0.55" data-config="sunraysWeight" aria-label="射线强度" />
+          </div>
+        </section>
+
+        <section class="panel-section">
+          <p class="section-heading"><span>Sound &amp; actions</span><b>声音与功能</b></p>
+
+          <div class="control">
+            <div class="control-label"><span>音频敏感度</span><output class="control-value" data-readout="audioSensitivity">1.00</output></div>
+            <input type="range" min="0.20" max="3" step="0.05" value="1" data-config="audioSensitivity" aria-label="音频敏感度" />
+          </div>
+
+          <div class="action-grid">
+            <button class="action-button" id="clear-button" type="button">清除画面</button>
+            <button class="action-button" id="random-button" type="button">随机喷溅</button>
+            <button class="action-button" id="audio-button" type="button">音频反应</button>
+            <button class="action-button" id="reset-button" type="button">重置参数</button>
+          </div>
+
+          <div class="audio-status" id="audio-status" aria-live="polite">
+            <span class="audio-dot"></span>
+            <span class="audio-meter"><i id="audio-meter-fill"></i></span>
+            <span id="audio-status-text">麦克风未启用</span>
+          </div>
+        </section>
+      </div>
+    </aside>
+
+    <div class="failure-message" id="failure-message" role="status">
+      <strong>无法启动 WebGL 流体画布</strong>
+      <p>请使用支持 WebGL 2 的现代浏览器，或检查图形加速设置后重试。</p>
+    </div>
+
+    <script>
+      (() => {
+        "use strict";
+
+        const canvas = document.getElementById("fluid-canvas");
+        const panel = document.getElementById("control-panel");
+        const panelToggle = document.getElementById("panel-toggle");
+        const hint = document.getElementById("interaction-hint");
+        const failureMessage = document.getElementById("failure-message");
+        const audioButton = document.getElementById("audio-button");
+        const audioStatus = document.getElementById("audio-status");
+        const audioStatusText = document.getElementById("audio-status-text");
+        const audioMeterFill = document.getElementById("audio-meter-fill");
+        const backgroundReadout = document.getElementById("background-readout");
+        const pauseToggle = document.getElementById("pause-toggle");
+
+        const mobileDevice = window.matchMedia("(max-width: 760px), (pointer: coarse)").matches;
+        const DEFAULTS = {
+          simResolution: mobileDevice ? 64 : 128,
+          dyeResolution: mobileDevice ? 256 : 512,
+          densityDissipation: 0.985,
+          velocityDissipation: 0.99,
+          pressure: 0.8,
+          curl: 26,
+          splatRadius: 0.016,
+          shading: true,
+          colorful: true,
+          colorUpdateSpeed: 0.6,
+          paused: false,
+          background: "#000000",
+          bloom: true,
+          bloomThreshold: 0.58,
+          bloomIntensity: 0.82,
+          sunrays: false,
+          sunraysDensity: 0.75,
+          sunraysWeight: 0.55,
+          audioSensitivity: 1,
+        };
+
+        const config = { ...DEFAULTS };
+        const isNumberConfig = new Set([
+          "simResolution", "dyeResolution", "densityDissipation", "velocityDissipation",
+          "pressure", "curl", "splatRadius", "colorUpdateSpeed", "bloomThreshold",
+          "bloomIntensity", "sunraysDensity", "sunraysWeight", "audioSensitivity",
+        ]);
+
+        function formatValue(key, value) {
+          if (key === "curl" || key === "simResolution" || key === "dyeResolution") return String(Math.round(value));
+          if (key === "splatRadius" || key === "densityDissipation" || key === "velocityDissipation") return Number(value).toFixed(3);
+          return Number(value).toFixed(2);
+        }
+
+        function updateReadout(key, value) {
+          const readout = document.querySelector(`[data-readout="${key}"]`);
+          if (readout) readout.textContent = formatValue(key, value);
+          if (key === "background") backgroundReadout.textContent = value.toUpperCase();
+        }
+
+        function setPanelOpen(open) {
+          panel.classList.toggle("collapsed", !open);
+          panelToggle.setAttribute("aria-expanded", String(open));
+        }
+
+        panelToggle.addEventListener("click", () => setPanelOpen(panel.classList.contains("collapsed")));
+
+        document.querySelectorAll("[data-config]").forEach((control) => {
+          const key = control.dataset.config;
+          const handler = () => {
+            const value = control.type === "checkbox"
+              ? control.checked
+              : isNumberConfig.has(key)
+                ? Number(control.value)
+                : control.value;
+            config[key] = value;
+            updateReadout(key, value);
+            if (key === "simResolution" || key === "dyeResolution") initFramebuffers();
+          };
+          control.addEventListener("input", handler);
+          control.addEventListener("change", handler);
+        });
+
+        if (mobileDevice) {
+          document.getElementById("sim-resolution").value = String(DEFAULTS.simResolution);
+          document.getElementById("dye-resolution").value = String(DEFAULTS.dyeResolution);
+        }
+
+        const gl = canvas.getContext("webgl2", {
+          alpha: false,
+          antialias: false,
+          depth: false,
+          stencil: false,
+          premultipliedAlpha: false,
+          preserveDrawingBuffer: false,
+        });
+
+        if (!gl) {
+          failureMessage.style.display = "block";
+          return;
+        }
+
+        const supportColorBufferFloat = gl.getExtension("EXT_color_buffer_float");
+        const supportFloatLinear = gl.getExtension("OES_texture_float_linear");
+        const textureInternalFormat = supportColorBufferFloat ? gl.RGBA16F : gl.RGBA8;
+        const textureType = supportColorBufferFloat ? gl.HALF_FLOAT : gl.UNSIGNED_BYTE;
+        const textureFilter = supportColorBufferFloat && !supportFloatLinear ? gl.NEAREST : gl.LINEAR;
+        const maxTextureSize = Math.min(gl.getParameter(gl.MAX_TEXTURE_SIZE), mobileDevice ? 768 : 1536);
+
+        const vertexShaderSource = `#version 300 es
+          precision highp float;
+          layout(location = 0) in vec2 aPosition;
+          out vec2 vUv;
+          void main() {
+            vUv = aPosition * 0.5 + 0.5;
+            gl_Position = vec4(aPosition, 0.0, 1.0);
+          }
+        `;
+
+        const fragmentHeader = `#version 300 es
+          precision highp float;
+          precision highp sampler2D;
+          in vec2 vUv;
+          out vec4 outColor;
+        `;
+
+        const clearShader = `${fragmentHeader}
+          uniform sampler2D uTexture;
+          uniform float value;
+          void main() { outColor = value * texture(uTexture, vUv); }
+        `;
+
+        const splatShader = `${fragmentHeader}
+          uniform vec2 point;
+          uniform vec3 color;
+          uniform float radius;
+          uniform float aspectRatio;
+          void main() {
+            vec2 p = vUv - point;
+            p.x *= aspectRatio;
+            vec3 splat = exp(-dot(p, p) / max(radius, 0.00001)) * color;
+            outColor = vec4(splat, 1.0);
+          }
+        `;
+
+        const advectionShader = `${fragmentHeader}
+          uniform sampler2D uVelocity;
+          uniform sampler2D uSource;
+          uniform float dt;
+          uniform float dissipation;
+          void main() {
+            vec2 velocity = texture(uVelocity, vUv).xy;
+            vec2 coord = vUv - dt * velocity;
+            outColor = dissipation * texture(uSource, coord);
+          }
+        `;
+
+        const divergenceShader = `${fragmentHeader}
+          uniform sampler2D uVelocity;
+          uniform vec2 texelSize;
+          void main() {
+            vec2 C = texture(uVelocity, vUv).xy;
+            vec2 L = texture(uVelocity, vUv - vec2(texelSize.x, 0.0)).xy;
+            vec2 R = texture(uVelocity, vUv + vec2(texelSize.x, 0.0)).xy;
+            vec2 B = texture(uVelocity, vUv - vec2(0.0, texelSize.y)).xy;
+            vec2 T = texture(uVelocity, vUv + vec2(0.0, texelSize.y)).xy;
+            if (vUv.x < texelSize.x) L = -C;
+            if (vUv.x > 1.0 - texelSize.x) R = -C;
+            if (vUv.y < texelSize.y) B = -C;
+            if (vUv.y > 1.0 - texelSize.y) T = -C;
+            float div = 0.5 * (R.x - L.x + T.y - B.y);
+            outColor = vec4(div, 0.0, 0.0, 1.0);
+          }
+        `;
+
+        const curlShader = `${fragmentHeader}
+          uniform sampler2D uVelocity;
+          uniform vec2 texelSize;
+          void main() {
+            float L = texture(uVelocity, vUv - vec2(texelSize.x, 0.0)).y;
+            float R = texture(uVelocity, vUv + vec2(texelSize.x, 0.0)).y;
+            float B = texture(uVelocity, vUv - vec2(0.0, texelSize.y)).x;
+            float T = texture(uVelocity, vUv + vec2(0.0, texelSize.y)).x;
+            float vorticity = R - L - T + B;
+            outColor = vec4(vorticity, 0.0, 0.0, 1.0);
+          }
+        `;
+
+        const vorticityShader = `${fragmentHeader}
+          uniform sampler2D uVelocity;
+          uniform sampler2D uCurl;
+          uniform vec2 texelSize;
+          uniform float curl;
+          uniform float dt;
+          void main() {
+            float L = abs(texture(uCurl, vUv - vec2(texelSize.x, 0.0)).x);
+            float R = abs(texture(uCurl, vUv + vec2(texelSize.x, 0.0)).x);
+            float B = abs(texture(uCurl, vUv - vec2(0.0, texelSize.y)).x);
+            float T = abs(texture(uCurl, vUv + vec2(0.0, texelSize.y)).x);
+            vec2 force = 0.5 * vec2(T - B, R - L);
+            force /= length(force) + 0.0001;
+            force *= curl * texture(uCurl, vUv).x;
+            force.y *= -1.0;
+            vec2 velocity = texture(uVelocity, vUv).xy + force * dt;
+            outColor = vec4(velocity, 0.0, 1.0);
+          }
+        `;
+
+        const pressureShader = `${fragmentHeader}
+          uniform sampler2D uPressure;
+          uniform sampler2D uDivergence;
+          uniform vec2 texelSize;
+          void main() {
+            float L = texture(uPressure, vUv - vec2(texelSize.x, 0.0)).x;
+            float R = texture(uPressure, vUv + vec2(texelSize.x, 0.0)).x;
+            float B = texture(uPressure, vUv - vec2(0.0, texelSize.y)).x;
+            float T = texture(uPressure, vUv + vec2(0.0, texelSize.y)).x;
+            float divergence = texture(uDivergence, vUv).x;
+            float pressure = (L + R + B + T - divergence) * 0.25;
+            outColor = vec4(pressure, 0.0, 0.0, 1.0);
+          }
+        `;
+
+        const gradientSubtractShader = `${fragmentHeader}
+          uniform sampler2D uPressure;
+          uniform sampler2D uVelocity;
+          uniform vec2 texelSize;
+          void main() {
+            float L = texture(uPressure, vUv - vec2(texelSize.x, 0.0)).x;
+            float R = texture(uPressure, vUv + vec2(texelSize.x, 0.0)).x;
+            float B = texture(uPressure, vUv - vec2(0.0, texelSize.y)).x;
+            float T = texture(uPressure, vUv + vec2(0.0, texelSize.y)).x;
+            vec2 velocity = texture(uVelocity, vUv).xy - vec2(R - L, T - B);
+            outColor = vec4(velocity, 0.0, 1.0);
+          }
+        `;
+
+        const bloomPrefilterShader = `${fragmentHeader}
+          uniform sampler2D uTexture;
+          uniform float threshold;
+          void main() {
+            vec3 color = texture(uTexture, vUv).rgb;
+            float brightness = max(color.r, max(color.g, color.b));
+            float knee = threshold * 0.5 + 0.001;
+            float soft = clamp((brightness - threshold + knee) / (2.0 * knee), 0.0, 1.0);
+            soft = soft * soft * knee;
+            float contribution = max(soft, brightness - threshold) / max(brightness, 0.0001);
+            outColor = vec4(color * contribution, 1.0);
+          }
+        `;
+
+        const blurShader = `${fragmentHeader}
+          uniform sampler2D uTexture;
+          uniform vec2 direction;
+          void main() {
+            vec3 color = vec3(0.0);
+            float total = 0.0;
+            for (int i = -4; i <= 4; i++) {
+              float weight = 1.0 - abs(float(i)) / 5.0;
+              color += texture(uTexture, vUv + direction * float(i)).rgb * weight;
+              total += weight;
+            }
+            outColor = vec4(color / total, 1.0);
+          }
+        `;
+
+        const sunraysShader = `${fragmentHeader}
+          uniform sampler2D uTexture;
+          uniform vec2 center;
+          uniform float density;
+          uniform float weight;
+          void main() {
+            const int STEPS = 16;
+            vec2 coord = vUv;
+            vec2 direction = (vUv - center) * density / float(STEPS);
+            vec3 rays = vec3(0.0);
+            float illumination = 1.0;
+            for (int i = 0; i < STEPS; i++) {
+              coord -= direction;
+              vec3 sampleColor = texture(uTexture, coord).rgb;
+              float brightness = max(sampleColor.r, max(sampleColor.g, sampleColor.b));
+              rays += sampleColor * brightness * illumination;
+              illumination *= 0.93;
+            }
+            outColor = vec4(rays * weight / float(STEPS), 1.0);
+          }
+        `;
+
+        const displayShader = `${fragmentHeader}
+          uniform sampler2D uDye;
+          uniform sampler2D uBloom;
+          uniform sampler2D uRays;
+          uniform vec2 dyeTexelSize;
+          uniform vec3 background;
+          uniform float shading;
+          uniform float bloomIntensity;
+          uniform float sunraysIntensity;
+          void main() {
+            vec3 color = texture(uDye, vUv).rgb;
+            if (shading > 0.5) {
+              vec3 L = texture(uDye, vUv - vec2(dyeTexelSize.x, 0.0)).rgb;
+              vec3 R = texture(uDye, vUv + vec2(dyeTexelSize.x, 0.0)).rgb;
+              vec3 B = texture(uDye, vUv - vec2(0.0, dyeTexelSize.y)).rgb;
+              vec3 T = texture(uDye, vUv + vec2(0.0, dyeTexelSize.y)).rgb;
+              float dx = length(R) - length(L);
+              float dy = length(T) - length(B);
+              vec3 normal = normalize(vec3(dx * 18.0, dy * 18.0, 0.34));
+              float diffuse = max(dot(normal, normalize(vec3(0.25, 0.45, 0.86))), 0.0);
+              color *= 0.56 + diffuse * 0.78;
+            }
+            color += texture(uBloom, vUv).rgb * bloomIntensity;
+            color += texture(uRays, vUv).rgb * sunraysIntensity;
+            color = max(color, 0.0);
+            color = 1.0 - exp(-color);
+            color = pow(color, vec3(0.82));
+            outColor = vec4(background + color, 1.0);
+          }
+        `;
+
+        function compileShader(type, source) {
+          const shader = gl.createShader(type);
+          gl.shaderSource(shader, source);
+          gl.compileShader(shader);
+          if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            const info = gl.getShaderInfoLog(shader);
+            gl.deleteShader(shader);
+            throw new Error(info || "WebGL shader compilation failed.");
+          }
+          return shader;
+        }
+
+        function createProgram(fragmentSource) {
+          const program = gl.createProgram();
+          const vertexShader = compileShader(gl.VERTEX_SHADER, vertexShaderSource);
+          const fragmentShader = compileShader(gl.FRAGMENT_SHADER, fragmentSource);
+          gl.attachShader(program, vertexShader);
+          gl.attachShader(program, fragmentShader);
+          gl.linkProgram(program);
+          gl.deleteShader(vertexShader);
+          gl.deleteShader(fragmentShader);
+          if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            const info = gl.getProgramInfoLog(program);
+            gl.deleteProgram(program);
+            throw new Error(info || "WebGL program link failed.");
+          }
+          const uniforms = {};
+          const count = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
+          for (let index = 0; index < count; index++) {
+            const name = gl.getActiveUniform(program, index).name.replace("[0]", "");
+            uniforms[name] = gl.getUniformLocation(program, name);
+          }
+          return { program, uniforms };
+        }
+
+        let programs;
+        try {
+          programs = {
+            clear: createProgram(clearShader),
+            splat: createProgram(splatShader),
+            advection: createProgram(advectionShader),
+            divergence: createProgram(divergenceShader),
+            curl: createProgram(curlShader),
+            vorticity: createProgram(vorticityShader),
+            pressure: createProgram(pressureShader),
+            gradientSubtract: createProgram(gradientSubtractShader),
+            bloomPrefilter: createProgram(bloomPrefilterShader),
+            blur: createProgram(blurShader),
+            sunrays: createProgram(sunraysShader),
+            display: createProgram(displayShader),
+          };
+        } catch (error) {
+          console.error(error);
+          failureMessage.style.display = "block";
+          return;
+        }
+
+        const vao = gl.createVertexArray();
+        const vertexBuffer = gl.createBuffer();
+        gl.bindVertexArray(vao);
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+        gl.enableVertexAttribArray(0);
+        gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+        gl.bindVertexArray(null);
+
+        function useProgram(program) {
+          gl.useProgram(program.program);
+        }
+
+        function bindTexture(unit, texture) {
+          gl.activeTexture(gl.TEXTURE0 + unit);
+          gl.bindTexture(gl.TEXTURE_2D, texture);
+          return unit;
+        }
+
+        function draw(target) {
+          gl.bindVertexArray(vao);
+          if (target) {
+            gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+            gl.viewport(0, 0, target.width, target.height);
+          } else {
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            gl.viewport(0, 0, canvas.width, canvas.height);
+          }
+          gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+          gl.bindVertexArray(null);
+        }
+
+        function createFBO(width, height) {
+          const texture = gl.createTexture();
+          const fbo = gl.createFramebuffer();
+          gl.bindTexture(gl.TEXTURE_2D, texture);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, textureFilter);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, textureFilter);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          gl.texImage2D(gl.TEXTURE_2D, 0, textureInternalFormat, width, height, 0, gl.RGBA, textureType, null);
+          gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+          gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+          const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+          if (status !== gl.FRAMEBUFFER_COMPLETE) console.warn("Incomplete framebuffer", status);
+          gl.viewport(0, 0, width, height);
+          gl.clearColor(0, 0, 0, 1);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+          return { texture, fbo, width, height, texelSizeX: 1 / width, texelSizeY: 1 / height };
+        }
+
+        function createDoubleFBO(width, height) {
+          let read = createFBO(width, height);
+          let write = createFBO(width, height);
+          return {
+            get read() { return read; },
+            get write() { return write; },
+            swap() { const temp = read; read = write; write = temp; },
+          };
+        }
+
+        function deleteFBO(target) {
+          if (!target) return;
+          gl.deleteTexture(target.texture);
+          gl.deleteFramebuffer(target.fbo);
+        }
+
+        function deleteDoubleFBO(target) {
+          if (!target) return;
+          deleteFBO(target.read);
+          deleteFBO(target.write);
+        }
+
+        function getResolution(baseResolution) {
+          const aspect = canvas.width / Math.max(canvas.height, 1);
+          let width = aspect >= 1 ? baseResolution * aspect : baseResolution;
+          let height = aspect >= 1 ? baseResolution : baseResolution / aspect;
+          const longest = Math.max(width, height);
+          if (longest > maxTextureSize) {
+            const scale = maxTextureSize / longest;
+            width *= scale;
+            height *= scale;
+          }
+          return { width: Math.max(2, Math.round(width)), height: Math.max(2, Math.round(height)) };
+        }
+
+        let velocity;
+        let dye;
+        let divergence;
+        let curl;
+        let pressure;
+        let bloom;
+        let bloomTemp;
+        let rays;
+
+        function initFramebuffers() {
+          if (!canvas.width || !canvas.height) return;
+          const sim = getResolution(config.simResolution);
+          const dyeResolution = getResolution(config.dyeResolution);
+          const effect = getResolution(Math.max(64, Math.round(config.dyeResolution / 2)));
+          const rayResolution = getResolution(Math.max(48, Math.round(config.dyeResolution / 4)));
+          deleteDoubleFBO(velocity);
+          deleteDoubleFBO(dye);
+          deleteFBO(divergence);
+          deleteFBO(curl);
+          deleteDoubleFBO(pressure);
+          deleteFBO(bloom);
+          deleteFBO(bloomTemp);
+          deleteFBO(rays);
+          velocity = createDoubleFBO(sim.width, sim.height);
+          dye = createDoubleFBO(dyeResolution.width, dyeResolution.height);
+          divergence = createFBO(sim.width, sim.height);
+          curl = createFBO(sim.width, sim.height);
+          pressure = createDoubleFBO(sim.width, sim.height);
+          bloom = createFBO(effect.width, effect.height);
+          bloomTemp = createFBO(effect.width, effect.height);
+          rays = createFBO(rayResolution.width, rayResolution.height);
+        }
+
+        function clearTarget(target) {
+          gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+          gl.viewport(0, 0, target.width, target.height);
+          gl.clearColor(0, 0, 0, 1);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+        }
+
+        function clearSimulation() {
+          if (!velocity || !dye) return;
+          [velocity.read, velocity.write, dye.read, dye.write, pressure.read, pressure.write, divergence, curl, bloom, bloomTemp, rays].forEach(clearTarget);
+          render();
+        }
+
+        function hexToRgb(hex) {
+          const value = Number.parseInt(hex.slice(1), 16);
+          return [((value >> 16) & 255) / 255, ((value >> 8) & 255) / 255, (value & 255) / 255];
+        }
+
+        function hsvToRgb(h, s = 0.78, v = 1.35) {
+          const f = (n) => {
+            const k = (n + h * 6) % 6;
+            return v * (1 - s * Math.max(0, Math.min(k, 4 - k, 1)));
+          };
+          return [f(5), f(3), f(1)];
+        }
+
+        let hue = 0.57;
+        function nextColor(offset = 0) {
+          if (!config.colorful) return [0.28, 0.74, 1.2];
+          hue = (hue + 0.045 + offset + config.colorUpdateSpeed * 0.012) % 1;
+          return hsvToRgb(hue);
+        }
+
+        function runSplat(x, y, dx, dy, color, radius = config.splatRadius) {
+          if (!velocity || !dye) return;
+          gl.enable(gl.BLEND);
+          gl.blendFunc(gl.ONE, gl.ONE);
+          useProgram(programs.splat);
+          gl.uniform2f(programs.splat.uniforms.point, x, y);
+          gl.uniform1f(programs.splat.uniforms.radius, radius);
+          gl.uniform1f(programs.splat.uniforms.aspectRatio, canvas.width / Math.max(canvas.height, 1));
+          gl.uniform3f(programs.splat.uniforms.color, dx, dy, 0.0);
+          draw(velocity.write);
+          velocity.swap();
+          gl.uniform3f(programs.splat.uniforms.color, color[0], color[1], color[2]);
+          draw(dye.write);
+          dye.swap();
+          gl.disable(gl.BLEND);
+        }
+
+        const splatQueue = [];
+        function queueSplat(x, y, dx, dy, color, radius) {
+          splatQueue.push({ x, y, dx, dy, color, radius });
+          if (splatQueue.length > 50) splatQueue.shift();
+        }
+
+        function flushSplats() {
+          while (splatQueue.length) {
+            const splat = splatQueue.shift();
+            runSplat(splat.x, splat.y, splat.dx, splat.dy, splat.color, splat.radius);
+          }
+        }
+
+        function randomSplats(count = 5) {
+          for (let index = 0; index < count; index++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 2 + Math.random() * 6;
+            queueSplat(
+              0.12 + Math.random() * 0.76,
+              0.14 + Math.random() * 0.72,
+              Math.cos(angle) * speed,
+              Math.sin(angle) * speed,
+              nextColor(Math.random() * 0.18),
+              config.splatRadius * (0.8 + Math.random() * 1.45),
+            );
+          }
+          if (config.paused) {
+            flushSplats();
+            render();
+          }
+        }
+
+        function runSimulation(dt) {
+          flushSplats();
+          gl.disable(gl.BLEND);
+
+          useProgram(programs.curl);
+          gl.uniform1i(programs.curl.uniforms.uVelocity, bindTexture(0, velocity.read.texture));
+          gl.uniform2f(programs.curl.uniforms.texelSize, velocity.read.texelSizeX, velocity.read.texelSizeY);
+          draw(curl);
+
+          useProgram(programs.vorticity);
+          gl.uniform1i(programs.vorticity.uniforms.uVelocity, bindTexture(0, velocity.read.texture));
+          gl.uniform1i(programs.vorticity.uniforms.uCurl, bindTexture(1, curl.texture));
+          gl.uniform2f(programs.vorticity.uniforms.texelSize, velocity.read.texelSizeX, velocity.read.texelSizeY);
+          gl.uniform1f(programs.vorticity.uniforms.curl, config.curl);
+          gl.uniform1f(programs.vorticity.uniforms.dt, dt);
+          draw(velocity.write);
+          velocity.swap();
+
+          useProgram(programs.divergence);
+          gl.uniform1i(programs.divergence.uniforms.uVelocity, bindTexture(0, velocity.read.texture));
+          gl.uniform2f(programs.divergence.uniforms.texelSize, velocity.read.texelSizeX, velocity.read.texelSizeY);
+          draw(divergence);
+
+          useProgram(programs.clear);
+          gl.uniform1i(programs.clear.uniforms.uTexture, bindTexture(0, pressure.read.texture));
+          gl.uniform1f(programs.clear.uniforms.value, config.pressure);
+          draw(pressure.write);
+          pressure.swap();
+
+          useProgram(programs.pressure);
+          gl.uniform2f(programs.pressure.uniforms.texelSize, pressure.read.texelSizeX, pressure.read.texelSizeY);
+          gl.uniform1i(programs.pressure.uniforms.uDivergence, bindTexture(0, divergence.texture));
+          for (let iteration = 0; iteration < 18; iteration++) {
+            gl.uniform1i(programs.pressure.uniforms.uPressure, bindTexture(1, pressure.read.texture));
+            draw(pressure.write);
+            pressure.swap();
+          }
+
+          useProgram(programs.gradientSubtract);
+          gl.uniform1i(programs.gradientSubtract.uniforms.uPressure, bindTexture(0, pressure.read.texture));
+          gl.uniform1i(programs.gradientSubtract.uniforms.uVelocity, bindTexture(1, velocity.read.texture));
+          gl.uniform2f(programs.gradientSubtract.uniforms.texelSize, velocity.read.texelSizeX, velocity.read.texelSizeY);
+          draw(velocity.write);
+          velocity.swap();
+
+          useProgram(programs.advection);
+          gl.uniform1i(programs.advection.uniforms.uVelocity, bindTexture(0, velocity.read.texture));
+          gl.uniform1i(programs.advection.uniforms.uSource, bindTexture(1, velocity.read.texture));
+          gl.uniform1f(programs.advection.uniforms.dt, dt);
+          gl.uniform1f(programs.advection.uniforms.dissipation, Math.pow(config.velocityDissipation, dt * 60));
+          draw(velocity.write);
+          velocity.swap();
+
+          gl.uniform1i(programs.advection.uniforms.uVelocity, bindTexture(0, velocity.read.texture));
+          gl.uniform1i(programs.advection.uniforms.uSource, bindTexture(1, dye.read.texture));
+          gl.uniform1f(programs.advection.uniforms.dissipation, Math.pow(config.densityDissipation, dt * 60));
+          draw(dye.write);
+          dye.swap();
+        }
+
+        function runBloom() {
+          if (!config.bloom) return;
+          useProgram(programs.bloomPrefilter);
+          gl.uniform1i(programs.bloomPrefilter.uniforms.uTexture, bindTexture(0, dye.read.texture));
+          gl.uniform1f(programs.bloomPrefilter.uniforms.threshold, config.bloomThreshold);
+          draw(bloom);
+
+          useProgram(programs.blur);
+          gl.uniform1i(programs.blur.uniforms.uTexture, bindTexture(0, bloom.texture));
+          gl.uniform2f(programs.blur.uniforms.direction, bloom.texelSizeX, 0);
+          draw(bloomTemp);
+          gl.uniform1i(programs.blur.uniforms.uTexture, bindTexture(0, bloomTemp.texture));
+          gl.uniform2f(programs.blur.uniforms.direction, 0, bloom.texelSizeY);
+          draw(bloom);
+        }
+
+        function runSunrays() {
+          if (!config.sunrays) return;
+          useProgram(programs.sunrays);
+          gl.uniform1i(programs.sunrays.uniforms.uTexture, bindTexture(0, dye.read.texture));
+          gl.uniform2f(programs.sunrays.uniforms.center, 0.5, 0.52);
+          gl.uniform1f(programs.sunrays.uniforms.density, config.sunraysDensity);
+          gl.uniform1f(programs.sunrays.uniforms.weight, config.sunraysWeight);
+          draw(rays);
+        }
+
+        function render() {
+          if (!dye) return;
+          runBloom();
+          runSunrays();
+          const background = hexToRgb(config.background);
+          useProgram(programs.display);
+          gl.uniform1i(programs.display.uniforms.uDye, bindTexture(0, dye.read.texture));
+          gl.uniform1i(programs.display.uniforms.uBloom, bindTexture(1, bloom.texture));
+          gl.uniform1i(programs.display.uniforms.uRays, bindTexture(2, rays.texture));
+          gl.uniform2f(programs.display.uniforms.dyeTexelSize, dye.read.texelSizeX, dye.read.texelSizeY);
+          gl.uniform3f(programs.display.uniforms.background, background[0], background[1], background[2]);
+          gl.uniform1f(programs.display.uniforms.shading, config.shading ? 1 : 0);
+          gl.uniform1f(programs.display.uniforms.bloomIntensity, config.bloom ? config.bloomIntensity : 0);
+          gl.uniform1f(programs.display.uniforms.sunraysIntensity, config.sunrays ? 1 : 0);
+          draw(null);
+        }
+
+        function resizeCanvas() {
+          const pixelRatio = Math.min(window.devicePixelRatio || 1, mobileDevice ? 1.25 : 1.75);
+          const width = Math.max(1, Math.floor(window.innerWidth * pixelRatio));
+          const height = Math.max(1, Math.floor(window.innerHeight * pixelRatio));
+          if (canvas.width === width && canvas.height === height) return;
+          canvas.width = width;
+          canvas.height = height;
+          initFramebuffers();
+        }
+
+        const pointers = new Map();
+        function positionFromEvent(event) {
+          const rect = canvas.getBoundingClientRect();
+          return {
+            x: Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)),
+            y: Math.min(1, Math.max(0, 1 - (event.clientY - rect.top) / rect.height)),
+          };
+        }
+
+        function fadeHint() { hint.classList.add("is-faded"); }
+
+        canvas.addEventListener("pointerdown", (event) => {
+          event.preventDefault();
+          const point = positionFromEvent(event);
+          const pointer = { ...point, color: nextColor(), lastColorTime: performance.now() };
+          pointers.set(event.pointerId, pointer);
+          canvas.setPointerCapture?.(event.pointerId);
+          queueSplat(point.x, point.y, (Math.random() - 0.5) * 2.2, (Math.random() - 0.5) * 2.2, pointer.color);
+          fadeHint();
+          if (config.paused) { flushSplats(); render(); }
+        });
+
+        canvas.addEventListener("pointermove", (event) => {
+          const pointer = pointers.get(event.pointerId);
+          if (!pointer) return;
+          event.preventDefault();
+          const point = positionFromEvent(event);
+          const dx = point.x - pointer.x;
+          const dy = point.y - pointer.y;
+          const elapsed = performance.now() - pointer.lastColorTime;
+          if (config.colorful && elapsed > Math.max(20, 220 - config.colorUpdateSpeed * 90)) {
+            pointer.color = nextColor();
+            pointer.lastColorTime = performance.now();
+          }
+          const force = mobileDevice ? 34 : 42;
+          if (Math.abs(dx) + Math.abs(dy) > 0.00005) {
+            queueSplat(point.x, point.y, dx * force, dy * force, pointer.color);
+            pointer.x = point.x;
+            pointer.y = point.y;
+            fadeHint();
+            if (config.paused) { flushSplats(); render(); }
+          }
+        });
+
+        function releasePointer(event) {
+          pointers.delete(event.pointerId);
+          if (canvas.hasPointerCapture?.(event.pointerId)) canvas.releasePointerCapture?.(event.pointerId);
+        }
+        canvas.addEventListener("pointerup", releasePointer);
+        canvas.addEventListener("pointercancel", releasePointer);
+        canvas.addEventListener("pointerleave", (event) => { if (event.buttons === 0) releasePointer(event); });
+
+        let audioContext;
+        let analyser;
+        let audioData;
+        let audioStream;
+        let audioReactive = false;
+        let lastAudioSplat = 0;
+        let audioPhase = 0;
+
+        function setAudioStatus(text, active) {
+          audioStatusText.textContent = text;
+          audioStatus.classList.toggle("is-active", Boolean(active));
+          audioButton.classList.toggle("is-active", Boolean(active));
+          audioButton.textContent = active ? "停止音频" : "音频反应";
+        }
+
+        async function toggleAudio() {
+          if (audioReactive) {
+            audioReactive = false;
+            audioStream?.getTracks().forEach((track) => track.stop());
+            audioStream = undefined;
+            analyser = undefined;
+            audioMeterFill.style.width = "0%";
+            setAudioStatus("麦克风未启用", false);
+            return;
+          }
+          if (!navigator.mediaDevices?.getUserMedia) {
+            setAudioStatus("此浏览器不支持麦克风输入", false);
+            return;
+          }
+          try {
+            setAudioStatus("正在请求麦克风权限…", false);
+            audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            audioContext = audioContext || new AudioContextClass();
+            await audioContext.resume();
+            const source = audioContext.createMediaStreamSource(audioStream);
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 256;
+            analyser.smoothingTimeConstant = 0.74;
+            source.connect(analyser);
+            audioData = new Uint8Array(analyser.frequencyBinCount);
+            audioReactive = true;
+            setAudioStatus("麦克风驱动流体中", true);
+          } catch (error) {
+            console.warn("Microphone permission was not granted", error);
+            setAudioStatus("需要允许麦克风权限", false);
+          }
+        }
+
+        function readAudio() {
+          if (!audioReactive || !analyser || !audioData) return;
+          analyser.getByteFrequencyData(audioData);
+          let sum = 0;
+          for (let index = 2; index < Math.floor(audioData.length * 0.7); index++) sum += audioData[index];
+          const average = sum / Math.max(1, Math.floor(audioData.length * 0.7) - 2) / 255;
+          const energy = Math.min(1, average * config.audioSensitivity * 2.25);
+          audioMeterFill.style.width = `${Math.round(energy * 100)}%`;
+          const now = performance.now();
+          if (energy > 0.055 && now - lastAudioSplat > 72) {
+            audioPhase += 0.32 + energy * 0.7;
+            const radius = 0.12 + energy * 0.26;
+            const x = 0.5 + Math.cos(audioPhase) * radius;
+            const y = 0.5 + Math.sin(audioPhase * 1.63) * radius;
+            queueSplat(x, y, Math.cos(audioPhase) * energy * 5, Math.sin(audioPhase * 1.7) * energy * 5, nextColor(energy * 0.1), config.splatRadius * (0.75 + energy));
+            lastAudioSplat = now;
+          }
+        }
+
+        document.getElementById("clear-button").addEventListener("click", clearSimulation);
+        document.getElementById("random-button").addEventListener("click", () => randomSplats(6));
+        audioButton.addEventListener("click", toggleAudio);
+        document.getElementById("reset-button").addEventListener("click", () => {
+          Object.assign(config, DEFAULTS);
+          document.querySelectorAll("[data-config]").forEach((control) => {
+            const key = control.dataset.config;
+            const value = config[key];
+            if (control.type === "checkbox") control.checked = value;
+            else control.value = value;
+            updateReadout(key, value);
+          });
+          initFramebuffers();
+          randomSplats(5);
+        });
+
+        window.addEventListener("keydown", (event) => {
+          const element = document.activeElement;
+          const editing = element && ["INPUT", "SELECT", "TEXTAREA"].includes(element.tagName);
+          if (editing) return;
+          if (event.code === "KeyP" && !event.repeat) {
+            config.paused = !config.paused;
+            pauseToggle.checked = config.paused;
+          }
+          if (event.code === "Space") {
+            event.preventDefault();
+            randomSplats(6);
+          }
+        });
+
+        window.addEventListener("resize", resizeCanvas, { passive: true });
+        document.addEventListener("visibilitychange", () => { if (!document.hidden) lastFrameTime = performance.now(); });
+
+        resizeCanvas();
+        randomSplats(7);
+        let lastFrameTime = performance.now();
+        function update(time) {
+          const dt = Math.min((time - lastFrameTime) / 1000, 0.0166667);
+          lastFrameTime = time;
+          if (!config.paused) {
+            if (config.colorful) hue = (hue + dt * config.colorUpdateSpeed * 0.075) % 1;
+            readAudio();
+            runSimulation(dt);
+          } else if (splatQueue.length) {
+            flushSplats();
+          }
+          render();
+          requestAnimationFrame(update);
+        }
+        requestAnimationFrame(update);
+      })();
+    </script>
+  </body>
+</html>

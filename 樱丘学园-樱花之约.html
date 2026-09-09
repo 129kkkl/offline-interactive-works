@@ -1,0 +1,1080 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f6c5d5">
+  <title>樱丘学园 · 樱花之约</title>
+  <style>
+    :root {
+      --pink: #ffb7c5;
+      --pink-deep: #e97e9b;
+      --lavender: #c8a2c8;
+      --lavender-deep: #9273a5;
+      --cream: #fff8f0;
+      --paper: #fff4dc;
+      --ink: #4a4a4a;
+      --muted: #8a7d84;
+      --gold: #d5a44b;
+      --green: #7eb59b;
+      --blue: #7ea8c5;
+      --orange: #e79c61;
+      --shadow: 0 18px 50px rgba(116, 73, 107, .16);
+      --soft-shadow: 0 8px 24px rgba(116, 73, 107, .12);
+      --line: rgba(122, 90, 119, .14);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      color: var(--ink);
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #f6d9e4;
+      overflow-x: hidden;
+    }
+    button, input { font: inherit; }
+    button { border: 0; color: inherit; cursor: pointer; }
+    button:focus-visible, input:focus-visible { outline: 3px solid rgba(213, 164, 75, .46); outline-offset: 2px; }
+    .app {
+      min-height: 100vh;
+      position: relative;
+      isolation: isolate;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 8% 12%, rgba(255,255,255,.82), transparent 24%),
+        radial-gradient(circle at 94% 24%, rgba(255,255,255,.5), transparent 24%),
+        linear-gradient(135deg, #ffe4ec 0%, #f6e1ee 42%, #e8d5f5 100%);
+    }
+    .app::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      opacity: .28;
+      pointer-events: none;
+      background-image: radial-gradient(rgba(90, 58, 91, .12) .65px, transparent .65px);
+      background-size: 7px 7px;
+      mix-blend-mode: multiply;
+    }
+    .petals { position: fixed; inset: 0; z-index: 20; pointer-events: none; overflow: hidden; }
+    .petal {
+      position: absolute;
+      top: -30px;
+      width: 12px;
+      height: 8px;
+      border-radius: 80% 15% 80% 15%;
+      background: rgba(255, 183, 197, .78);
+      box-shadow: 0 2px 6px rgba(207, 111, 140, .12);
+      animation: fall var(--fall) linear var(--delay) infinite;
+      transform: rotate(var(--rotate));
+    }
+    .petal:nth-child(3n) { background: rgba(255, 247, 249, .75); width: 9px; height: 7px; }
+    .petal:nth-child(4n) { background: rgba(213, 164, 75, .34); width: 7px; height: 5px; }
+    @keyframes fall {
+      0% { transform: translate3d(0, -8vh, 0) rotate(0deg); opacity: 0; }
+      10% { opacity: .92; }
+      50% { transform: translate3d(7vw, 52vh, 0) rotate(180deg); }
+      100% { transform: translate3d(-5vw, 112vh, 0) rotate(370deg); opacity: .12; }
+    }
+
+    .topbar {
+      width: min(1440px, calc(100% - 32px));
+      min-height: 76px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      padding: 16px 0 10px;
+      position: relative;
+      z-index: 3;
+    }
+    .brand { display: flex; align-items: center; gap: 11px; min-width: 245px; }
+    .brand-mark {
+      width: 42px; height: 42px; border-radius: 14px;
+      display: grid; place-items: center; font-size: 23px;
+      background: rgba(255,255,255,.68);
+      border: 1px solid rgba(255,255,255,.86);
+      box-shadow: var(--soft-shadow);
+    }
+    .brand strong { display: block; font-size: 15px; letter-spacing: .08em; }
+    .brand small { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; }
+    .day-progress { flex: 1; min-width: 180px; max-width: 500px; }
+    .day-progress-line { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 7px; }
+    .day-progress-line strong { font-size: 14px; letter-spacing: .05em; }
+    .day-progress-line span { color: var(--muted); font-size: 11px; }
+    .day-dots { display: flex; gap: 6px; }
+    .day-dot { height: 7px; flex: 1; max-width: 84px; border-radius: 99px; background: rgba(255,255,255,.52); box-shadow: inset 0 0 0 1px rgba(126, 87, 127, .08); }
+    .day-dot.done { background: linear-gradient(90deg, var(--pink-deep), var(--lavender-deep)); }
+    .day-dot.current { background: linear-gradient(90deg, var(--pink), #e1bddb); box-shadow: 0 0 0 3px rgba(255,183,197,.2); }
+    .top-actions { display: flex; gap: 7px; margin-left: auto; }
+    .icon-btn, .mini-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      min-height: 36px; padding: 0 12px; border-radius: 999px;
+      background: rgba(255,255,255,.55); border: 1px solid rgba(255,255,255,.8);
+      color: #6d5b68; box-shadow: 0 4px 14px rgba(126, 78, 113, .07);
+      transition: transform .2s, background .2s, box-shadow .2s;
+      font-size: 12px; white-space: nowrap;
+    }
+    .icon-btn:hover, .mini-btn:hover { transform: translateY(-2px); background: rgba(255,255,255,.88); box-shadow: 0 8px 18px rgba(126, 78, 113, .12); }
+    .icon-btn .button-label { display: inline; }
+
+    .main-layout {
+      width: min(1440px, calc(100% - 32px));
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 235px minmax(0, 1fr) 235px;
+      gap: 18px;
+      padding: 5px 0 132px;
+      position: relative;
+      z-index: 1;
+    }
+    .rail { min-width: 0; }
+    .rail-card, .scene-shell, .story-card {
+      background: rgba(255,255,255,.55);
+      border: 1px solid rgba(255,255,255,.8);
+      box-shadow: var(--soft-shadow);
+      backdrop-filter: blur(15px);
+      -webkit-backdrop-filter: blur(15px);
+    }
+    .rail-card { border-radius: 20px; padding: 16px; margin-bottom: 14px; }
+    .rail-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+    .rail-title strong { font-size: 13px; letter-spacing: .06em; }
+    .rail-title span { color: var(--muted); font-size: 11px; }
+    .player-card { position: relative; overflow: hidden; min-height: 148px; background: linear-gradient(145deg, rgba(255,248,240,.78), rgba(255,230,239,.7)); }
+    .player-card::after { content: "✿"; position: absolute; right: -4px; bottom: -18px; font-size: 102px; color: rgba(255,183,197,.26); transform: rotate(-15deg); }
+    .player-avatar { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: #fff; border: 4px solid rgba(255,183,197,.56); font-size: 23px; position: relative; z-index: 1; }
+    .player-card strong { display: block; margin-top: 12px; font-size: 15px; position: relative; z-index: 1; }
+    .player-card p { margin: 5px 0 0; color: var(--muted); line-height: 1.65; font-size: 11px; max-width: 165px; position: relative; z-index: 1; }
+    .chapter-quote { color: #7a6572; font-family: cursive; font-size: 12px; line-height: 1.7; border-left: 2px solid var(--pink); padding-left: 10px; }
+    .scene-nav { display: grid; gap: 7px; }
+    .scene-nav button { width: 100%; text-align: left; display: flex; align-items: center; gap: 9px; padding: 10px 11px; border-radius: 13px; background: rgba(255,255,255,.28); color: #796978; transition: .2s; font-size: 12px; }
+    .scene-nav button:hover { background: rgba(255,255,255,.76); transform: translateX(2px); }
+    .scene-nav button.active { background: linear-gradient(100deg, rgba(255,183,197,.55), rgba(200,162,200,.28)); color: #674f63; box-shadow: inset 0 0 0 1px rgba(255,255,255,.62); }
+    .scene-nav button.locked { opacity: .5; cursor: not-allowed; }
+    .scene-nav button em { font-style: normal; margin-left: auto; font-size: 11px; }
+    .scene-icon { width: 23px; text-align: center; font-size: 17px; }
+    .clue-list { display: grid; gap: 7px; }
+    .clue-row { display: flex; gap: 8px; align-items: flex-start; padding: 8px 9px; border-radius: 11px; background: rgba(255,248,240,.48); font-size: 11px; line-height: 1.55; }
+    .clue-row span:first-child { color: var(--pink-deep); }
+    .clue-empty { color: var(--muted); font-size: 11px; line-height: 1.7; }
+
+    .game-column { min-width: 0; }
+    .scene-shell { border-radius: 25px; padding: 12px; position: relative; overflow: hidden; }
+    .scene-head { display: flex; justify-content: space-between; align-items: center; padding: 3px 7px 11px; gap: 12px; }
+    .scene-head h1 { font-size: 17px; margin: 0; letter-spacing: .06em; }
+    .scene-head p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
+    .scene-weather { color: var(--muted); font-size: 11px; white-space: nowrap; }
+    .scene-art { min-height: 465px; border-radius: 19px; overflow: hidden; position: relative; isolation: isolate; background: #eadbe7; box-shadow: inset 0 0 0 1px rgba(255,255,255,.36); }
+    .scene-art::before, .scene-art::after { content: ""; position: absolute; pointer-events: none; }
+    .scene-art::before { inset: 0; z-index: -2; background: linear-gradient(180deg, rgba(255,255,255,.27), rgba(117,71,115,.12)); }
+    .scene-art::after { inset: 0; z-index: -1; opacity: .22; background-image: radial-gradient(rgba(255,255,255,.9) .8px, transparent .8px); background-size: 6px 6px; mix-blend-mode: soft-light; }
+    .scene-art.classroom { background: linear-gradient(160deg, #f7d1d7 0%, #e9c2d9 47%, #d0b8d3 100%); }
+    .scene-art.library { background: linear-gradient(150deg, #f4e9da 0%, #d6d7dd 53%, #9db5c1 100%); }
+    .scene-art.sakura { background: linear-gradient(155deg, #f7cfdd 0%, #eab9c8 42%, #b896b3 100%); }
+    .scene-art.rooftop { background: linear-gradient(160deg, #b9e0e2 0%, #e6d2dc 45%, #c7a8c7 100%); }
+    .scene-art.broadcast { background: linear-gradient(160deg, #c9c5dc 0%, #b2b1ca 48%, #8e86a5 100%); }
+    .scene-art.hallway { background: linear-gradient(160deg, #eee1d3 0%, #e6cbd0 47%, #b8a3bf 100%); }
+    .scene-art.rain::before { background: repeating-linear-gradient(105deg, transparent 0 15px, rgba(255,255,255,.18) 16px 17px, transparent 18px 31px), linear-gradient(180deg, rgba(125,147,174,.24), rgba(90,67,103,.18)); }
+    .scene-art .sky-glow { position: absolute; width: 44%; height: 52%; right: 4%; top: -12%; border-radius: 50%; background: rgba(255,255,255,.28); filter: blur(22px); }
+    .scene-caption { display: flex; justify-content: space-between; gap: 12px; margin: 11px 6px 2px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+    .scene-caption b { color: #6d5968; font-weight: 600; }
+
+    /* 以 CSS 小道具搭出没有外部图片也能成立的场景。 */
+    .prop { position: absolute; pointer-events: none; }
+    .classroom-window { left: 6%; top: 11%; width: 29%; height: 42%; border: 8px solid rgba(255,250,247,.76); background: linear-gradient(155deg, #9fd6dd, #f7c8d8 54%, #a7c6a6 55%); box-shadow: 0 10px 24px rgba(80, 68, 101, .15); }
+    .classroom-window::before, .classroom-window::after { content: ""; position: absolute; background: rgba(255,255,255,.75); }
+    .classroom-window::before { width: 6px; inset-block: 0; left: 50%; transform: translateX(-50%); }
+    .classroom-window::after { height: 6px; inset-inline: 0; top: 52%; transform: translateY(-50%); }
+    .blackboard { right: 7%; top: 8%; width: 41%; height: 22%; border-radius: 10px; background: #607c79; border: 7px solid rgba(221,191,180,.74); color: rgba(255,255,255,.72); padding: 13px; font-family: cursive; font-size: 13px; transform: rotate(-1deg); box-shadow: 0 8px 16px rgba(50,60,66,.15); }
+    .blackboard::after { content: "文化祭倒计时 5 日"; display: block; margin-top: 16px; color: #f6d9a5; }
+    .desk { width: 29%; height: 17%; border-radius: 8px 8px 17px 17px; background: linear-gradient(180deg, #c99475, #9c6b60); box-shadow: 0 18px 0 -5px rgba(80, 54, 69, .16); transform: skewX(-6deg); }
+    .desk::before { content: ""; position: absolute; left: 9%; top: 16%; width: 80%; height: 20%; border-radius: 6px; background: rgba(255,243,221,.45); }
+    .desk-a { left: 12%; bottom: 20%; } .desk-b { left: 45%; bottom: 14%; width: 32%; } .desk-c { right: 7%; bottom: 21%; width: 24%; opacity: .82; }
+    .chair { width: 16%; height: 15%; background: rgba(122, 79, 76, .7); border-radius: 8px; bottom: 7%; }
+    .chair-a { left: 20%; } .chair-b { left: 57%; } .chair-c { right: 10%; }
+    .library-shelf { top: 7%; width: 19%; height: 75%; border-radius: 10px; background: linear-gradient(90deg, #8b655c, #c09375 18%, #8b655c 22%, #b7846a 28%, #8b655c 33%, #b98d71 40%, #8b655c 45%, #c29777 54%, #8b655c 60%, #b4816c 71%, #8b655c 76%, #c49c7e 90%, #8b655c); box-shadow: 0 10px 15px rgba(73,59,63,.15); }
+    .library-shelf::before { content: ""; position: absolute; inset: 15% 0 15%; background: repeating-linear-gradient(180deg, transparent 0 17%, rgba(70,40,41,.7) 18% 20%, transparent 21% 32%); }
+    .shelf-a { left: 7%; } .shelf-b { left: 30%; transform: perspective(180px) rotateY(8deg); } .shelf-c { right: 7%; transform: perspective(180px) rotateY(-8deg); }
+    .library-table { position: absolute; right: 22%; bottom: 17%; width: 36%; height: 11%; background: #aa7a66; border-radius: 50% 50% 8px 8px; box-shadow: 0 13px 0 -2px rgba(77,54,64,.2); }
+    .library-lamp { position: absolute; right: 34%; bottom: 27%; width: 10%; height: 31%; border-left: 4px solid #705c65; }
+    .library-lamp::before { content: ""; position: absolute; left: -18px; top: -4px; width: 46px; height: 24px; border-radius: 50% 50% 10px 10px; background: #f6d8a7; box-shadow: 0 0 28px rgba(255,224,153,.65); }
+    .sakura-trunk { left: 47%; bottom: 10%; width: 11%; height: 71%; background: linear-gradient(90deg, #795963, #aa766f 45%, #735460); border-radius: 48% 42% 7px 7px; transform: rotate(4deg); }
+    .sakura-crown { left: 14%; top: 2%; width: 70%; height: 48%; border-radius: 52% 48% 44% 55%; background: radial-gradient(circle at 20% 40%, #f8cbd9 0 16%, transparent 17%), radial-gradient(circle at 45% 27%, #ffc9da 0 21%, transparent 22%), radial-gradient(circle at 71% 46%, #efa8c0 0 23%, transparent 24%), radial-gradient(circle at 51% 72%, #f6c2d4 0 29%, transparent 30%), #dd98b7; filter: drop-shadow(0 12px 14px rgba(113,66,107,.18)); }
+    .sakura-path { left: 22%; right: 19%; bottom: 0; height: 70%; background: linear-gradient(84deg, rgba(255,251,240,.04), rgba(255,251,240,.68) 48%, rgba(255,251,240,.02)); clip-path: polygon(32% 0, 67% 0, 100% 100%, 0 100%); }
+    .bench { left: 14%; bottom: 18%; width: 24%; height: 13%; border-radius: 15px 15px 4px 4px; background: #9c6a63; box-shadow: inset 0 7px rgba(230,180,157,.34), 0 13px 0 -3px rgba(94,64,70,.22); }
+    .bench::before, .bench::after { content: ""; position: absolute; bottom: -24px; width: 9px; height: 26px; background: #6b5b61; } .bench::before { left: 15%; } .bench::after { right: 15%; }
+    .rooftop-fence { inset: 12% 5% 19%; border: 4px dashed rgba(108,130,145,.5); border-bottom: 0; border-radius: 12px 12px 0 0; background: repeating-linear-gradient(90deg, transparent 0 27px, rgba(108,130,145,.23) 28px 30px), repeating-linear-gradient(0deg, transparent 0 25px, rgba(108,130,145,.22) 26px 28px); }
+    .easel { left: 17%; bottom: 13%; width: 25%; height: 48%; border: 10px solid #816b63; border-top-width: 6px; transform: skewY(-3deg); box-shadow: 0 14px 12px rgba(81,61,74,.16); }
+    .easel::before { content: ""; position: absolute; inset: 10% 9%; background: linear-gradient(145deg, #f6d6c9, #acc8b5 52%, #c58aa0 53%, #f6d8cf); }
+    .plant { right: 16%; bottom: 14%; width: 16%; height: 14%; border-radius: 40% 40% 52% 52%; background: #92ad8b; box-shadow: inset 0 10px rgba(255,255,255,.17), 0 8px 0 -1px #8b675e; }
+    .plant::before, .plant::after { content: ""; position: absolute; width: 40%; height: 94%; bottom: 55%; border-radius: 80% 14% 80% 14%; background: #719b81; transform: rotate(-25deg); } .plant::before { left: -10%; } .plant::after { right: -10%; transform: rotate(32deg); }
+    .rooftop-sea { right: 5%; top: 18%; width: 28%; height: 20%; border-radius: 50%; background: repeating-linear-gradient(175deg, rgba(255,255,255,.55) 0 3px, transparent 4px 12px), linear-gradient(#89cbd0, #b6dfe1); opacity: .76; }
+    .broadcast-console { left: 9%; bottom: 15%; width: 37%; height: 30%; border-radius: 12px; background: #5d5b76; box-shadow: 0 14px 14px rgba(49,41,67,.22); }
+    .broadcast-console::before { content: "◉  ▪ ▪ ▪  ◌  ▪ ▪"; position: absolute; left: 8%; right: 8%; top: 15%; height: 33%; padding: 10px; border-radius: 6px; background: #30394f; color: #9fe6d4; font-size: 13px; letter-spacing: 4px; }
+    .microphone { right: 28%; top: 23%; width: 12%; height: 28%; border-radius: 50% 50% 42% 42%; background: #646077; box-shadow: inset 0 5px rgba(255,255,255,.3); }
+    .microphone::after { content: ""; position: absolute; left: 48%; top: 91%; width: 5px; height: 80px; background: #656077; }
+    .piano { right: 8%; bottom: 13%; width: 32%; height: 30%; border-radius: 10px 10px 4px 4px; background: #4e4359; box-shadow: 0 13px 13px rgba(54,43,65,.24); }
+    .piano::before { content: ""; position: absolute; inset: 12% 8% 25%; background: repeating-linear-gradient(90deg, #fff8ee 0 12px, #544657 13px 14px); border-radius: 3px; }
+    .hall-window { right: 11%; top: 11%; width: 27%; height: 49%; border: 8px solid rgba(255,249,236,.76); background: linear-gradient(155deg, #aacbd5, #f6cad6 58%, #a7c49d 59%); }
+    .hall-window::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 5px; background: rgba(255,255,255,.72); }
+    .hall-lockers { left: 6%; top: 16%; width: 31%; height: 61%; border-radius: 9px; background: repeating-linear-gradient(0deg, #b78f9b 0 29px, #a27989 30px 32px), repeating-linear-gradient(90deg, transparent 0 58px, rgba(255,255,255,.18) 59px 61px); box-shadow: 0 10px 15px rgba(77,54,67,.13); }
+    .hall-floor { left: 0; right: 0; bottom: 0; height: 22%; background: linear-gradient(170deg, rgba(255,255,255,.12), rgba(113,79,104,.2)); clip-path: polygon(0 45%, 100% 0, 100% 100%, 0 100%); }
+
+    .hotspot {
+      position: absolute; transform: translate(-50%, -50%); z-index: 5;
+      min-width: 86px; max-width: 135px; padding: 8px 10px;
+      border-radius: 14px; color: #62535f; font-size: 11px; line-height: 1.3;
+      background: rgba(255,250,242,.73); border: 1px solid rgba(255,255,255,.92);
+      box-shadow: 0 7px 18px rgba(74,51,72,.11); backdrop-filter: blur(6px); transition: transform .2s, box-shadow .2s, background .2s;
+    }
+    .hotspot::before { content: "✦"; color: var(--gold); margin-right: 4px; }
+    .hotspot:hover, .hotspot:active { transform: translate(-50%, -50%) scale(1.06); background: rgba(255,255,255,.95); box-shadow: 0 0 0 4px rgba(255,215,0,.13), 0 12px 22px rgba(74,51,72,.16); }
+    .hotspot.character::before { content: "♡"; color: var(--pink-deep); }
+    .hotspot.small { min-width: 72px; padding: 7px; }
+    .scene-elements { position: absolute; inset: 0; }
+    .ambient-label { position: absolute; left: 22px; bottom: 18px; z-index: 3; color: rgba(255,255,255,.85); font-family: cursive; font-size: 13px; text-shadow: 0 2px 8px rgba(80,58,75,.38); pointer-events: none; }
+    .scene-stamp { position: absolute; right: 20px; bottom: 16px; z-index: 3; padding: 5px 9px; border: 1px solid rgba(255,255,255,.52); border-radius: 999px; color: rgba(255,255,255,.78); font-size: 10px; background: rgba(68,53,76,.12); }
+
+    .story-card { margin-top: 13px; border-radius: 20px; padding: 16px 18px; position: relative; overflow: hidden; }
+    .story-card::after { content: "❀"; position: absolute; right: 22px; bottom: -22px; font-size: 88px; color: rgba(255,183,197,.19); transform: rotate(-18deg); pointer-events: none; }
+    .story-kicker { color: var(--pink-deep); font-size: 11px; letter-spacing: .12em; }
+    .story-card h2 { margin: 5px 0 7px; font-size: 17px; letter-spacing: .04em; }
+    .story-card p { margin: 0; max-width: 780px; color: #695c66; font-size: 13px; line-height: 1.8; min-height: 44px; }
+    .story-actions { display: flex; gap: 8px; align-items: center; margin-top: 12px; position: relative; z-index: 2; }
+    .primary-btn, .secondary-btn, .danger-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      min-height: 36px; padding: 0 16px; border-radius: 999px; font-size: 12px; transition: transform .2s, box-shadow .2s, filter .2s;
+    }
+    .primary-btn { color: #fffaf7; background: linear-gradient(100deg, var(--pink-deep), var(--lavender-deep)); box-shadow: 0 8px 18px rgba(177, 101, 140, .22); }
+    .secondary-btn { color: #725d6e; background: rgba(255,255,255,.7); border: 1px solid rgba(255,255,255,.9); }
+    .danger-btn { color: #a45165; background: rgba(255,227,231,.9); }
+    .primary-btn:hover, .secondary-btn:hover, .danger-btn:hover { transform: translateY(-2px); filter: saturate(1.08); box-shadow: 0 10px 20px rgba(112,69,108,.14); }
+    .story-meta { margin-left: auto; color: var(--muted); font-size: 10px; display: flex; gap: 8px; align-items: center; }
+
+    .character-list { display: grid; gap: 8px; }
+    .character-card { display: grid; grid-template-columns: 37px 1fr auto; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 8px; border-radius: 14px; background: rgba(255,255,255,.35); transition: .2s; }
+    .character-card:hover { background: rgba(255,255,255,.78); transform: translateX(-2px); }
+    .character-avatar { width: 37px; height: 37px; border-radius: 50%; display: grid; place-items: center; background: #fff; font-size: 19px; border: 2px solid currentColor; }
+    .character-card strong { font-size: 12px; display: block; }
+    .character-card small { display: block; font-size: 10px; color: var(--muted); margin-top: 3px; }
+    .heart-meter { color: var(--pink-deep); font-size: 10px; letter-spacing: -2px; white-space: nowrap; }
+    .case-board { background: linear-gradient(135deg, rgba(255,248,240,.65), rgba(255,224,235,.44)); }
+    .case-board .case-number { font-size: 27px; font-weight: 700; color: var(--pink-deep); line-height: 1; }
+    .case-board .case-label { color: var(--muted); font-size: 10px; }
+    .case-row { display: flex; justify-content: space-between; align-items: center; gap: 9px; margin: 11px 0; }
+    .case-row b { font-size: 12px; }
+    .case-progress { height: 7px; border-radius: 99px; background: rgba(255,255,255,.72); overflow: hidden; }
+    .case-progress span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--pink-deep), var(--lavender)); transition: width .3s; }
+    .achievement-list { display: grid; gap: 7px; }
+    .achievement { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 10px; }
+    .achievement.unlocked { color: #79615d; }
+    .achievement .badge { width: 23px; height: 23px; display: grid; place-items: center; border-radius: 50%; background: rgba(255,255,255,.48); filter: grayscale(1); opacity: .6; }
+    .achievement.unlocked .badge { background: #fff0c9; filter: none; opacity: 1; box-shadow: 0 0 0 3px rgba(255,215,0,.12); }
+
+    .bottom-bar { position: fixed; z-index: 10; left: 0; right: 0; bottom: 0; padding: 12px 16px max(12px, env(safe-area-inset-bottom)); background: linear-gradient(180deg, rgba(248,226,236,.06), rgba(255,246,241,.88) 35%); pointer-events: none; }
+    .bottom-inner { width: min(1440px, calc(100% - 32px)); margin: 0 auto; display: flex; gap: 12px; align-items: center; pointer-events: auto; }
+    .inventory { flex: 1; display: flex; align-items: center; gap: 7px; min-width: 0; padding: 8px 11px; border-radius: 17px; background: rgba(255,255,255,.7); border: 1px solid rgba(255,255,255,.85); box-shadow: var(--soft-shadow); backdrop-filter: blur(15px); }
+    .inventory-title { color: var(--muted); font-size: 10px; white-space: nowrap; }
+    .inventory-items { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+    .inventory-items::-webkit-scrollbar { display: none; }
+    .item-card { flex: 0 0 auto; min-width: 47px; height: 43px; padding: 3px 6px; border-radius: 12px; background: rgba(255,248,240,.83); border: 1px solid rgba(255,255,255,.9); display: grid; place-items: center; font-size: 19px; position: relative; transition: .2s; }
+    .item-card:hover { transform: translateY(-4px) scale(1.04); box-shadow: 0 8px 14px rgba(114,71,107,.14); }
+    .item-card small { display: block; font-size: 8px; color: var(--muted); max-width: 54px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .inventory-empty { color: var(--muted); font-size: 11px; padding: 6px; }
+    .memory-btn { width: 45px; height: 45px; flex: 0 0 auto; border-radius: 16px; background: linear-gradient(145deg, #fff5c9, #f3c5d4); box-shadow: 0 8px 16px rgba(168,105,124,.17); font-size: 20px; transition: .2s; }
+    .memory-btn:hover { transform: translateY(-3px) rotate(-4deg); }
+    .toast { position: fixed; left: 50%; bottom: 93px; transform: translate(-50%, 18px); z-index: 60; opacity: 0; pointer-events: none; padding: 10px 15px; border-radius: 999px; color: #6b5361; background: rgba(255,250,244,.94); border: 1px solid rgba(255,255,255,.95); box-shadow: var(--shadow); font-size: 12px; transition: .3s; white-space: nowrap; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    .chapter-overlay { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; pointer-events: none; opacity: 0; background: rgba(255,248,244,.25); transition: opacity .35s; }
+    .chapter-overlay.show { opacity: 1; }
+    .chapter-overlay .chapter-inner { text-align: center; transform: translateY(15px); transition: transform .5s; }
+    .chapter-overlay.show .chapter-inner { transform: translateY(0); }
+    .chapter-overlay small { display: block; color: var(--pink-deep); font-size: 12px; letter-spacing: .28em; margin-left: .28em; }
+    .chapter-overlay strong { display: block; margin-top: 8px; color: #6c5369; font-family: cursive; font-size: 38px; letter-spacing: .18em; margin-left: .18em; text-shadow: 0 5px 20px rgba(133,86,126,.14); }
+    .chapter-overlay span { display: block; margin-top: 12px; color: var(--muted); font-size: 11px; letter-spacing: .1em; }
+
+    .modal-backdrop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 18px; background: rgba(76,55,77,.22); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); animation: fadeIn .18s ease-out; }
+    .modal-panel { width: min(650px, 100%); max-height: min(88vh, 760px); overflow: auto; border-radius: 24px; padding: 22px; color: var(--ink); background: linear-gradient(145deg, rgba(255,253,248,.96), rgba(255,238,244,.95)); border: 1px solid rgba(255,255,255,.96); box-shadow: var(--shadow); position: relative; animation: riseIn .24s ease-out; }
+    .modal-panel.start-modal { overflow: hidden; }
+    .modal-panel.wide { width: min(850px, 100%); }
+    .modal-panel.paper { background: linear-gradient(135deg, #fff6e2, #fff0df 52%, #f9e5ee); }
+    .modal-panel.dark-paper { color: #fff8f5; background: linear-gradient(145deg, #3f3b56, #625873); }
+    .modal-close { position: absolute; right: 13px; top: 12px; width: 31px; height: 31px; border-radius: 50%; color: #806c77; background: rgba(255,255,255,.65); font-size: 18px; line-height: 1; }
+    .modal-kicker { color: var(--pink-deep); font-size: 11px; letter-spacing: .14em; }
+    .modal-panel h2 { margin: 6px 0 9px; font-size: 21px; letter-spacing: .05em; }
+    .modal-panel h3 { margin: 17px 0 8px; font-size: 14px; }
+    .modal-panel p { margin: 0 0 10px; color: #766871; font-size: 13px; line-height: 1.8; }
+    .modal-panel.dark-paper p, .modal-panel.dark-paper small { color: rgba(255,248,245,.72); }
+    .modal-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    .modal-divider { height: 1px; margin: 15px 0; background: var(--line); }
+    .modal-note { padding: 11px 13px; border-left: 3px solid var(--pink); border-radius: 0 12px 12px 0; background: rgba(255,255,255,.48); color: #76646d; font-size: 12px; line-height: 1.7; }
+    .start-panel { text-align: center; padding: 34px 27px 27px; overflow: hidden; }
+    .start-panel::before { content: "✿"; position: absolute; left: -22px; top: -45px; color: rgba(255,183,197,.24); font-size: 165px; transform: rotate(-25deg); }
+    .start-panel::after { content: "✿"; position: absolute; right: -26px; bottom: -56px; color: rgba(200,162,200,.23); font-size: 190px; transform: rotate(20deg); }
+    .start-mark { position: relative; z-index: 1; width: 83px; height: 83px; display: grid; place-items: center; margin: 0 auto 12px; border-radius: 30px; background: linear-gradient(145deg, #fff, #ffe2eb); border: 7px solid rgba(255,255,255,.72); font-size: 42px; box-shadow: 0 14px 30px rgba(158,91,124,.14); }
+    .start-panel h2, .start-panel p, .start-panel .modal-actions, .start-panel small { position: relative; z-index: 1; }
+    .start-panel h2 { font-family: cursive; font-size: 30px; margin-top: 8px; }
+    .start-panel p { max-width: 460px; margin: 0 auto; }
+    .start-panel .modal-actions { justify-content: center; }
+    .start-panel small { display: block; margin-top: 14px; color: var(--muted); font-size: 10px; }
+    .dialogue-header { display: flex; align-items: center; gap: 12px; }
+    .dialogue-avatar { width: 53px; height: 53px; display: grid; place-items: center; border-radius: 50%; background: #fff; border: 3px solid currentColor; font-size: 25px; }
+    .dialogue-header strong { display: block; font-size: 17px; }
+    .dialogue-header small { display: block; color: var(--muted); margin-top: 4px; font-size: 11px; }
+    .dialogue-line { margin: 17px 0 4px; padding: 14px; border-radius: 15px; background: rgba(255,255,255,.56); color: #6a5a64; line-height: 1.9; font-size: 14px; }
+    .dialogue-line::before { content: "“"; color: var(--pink-deep); font: 26px Georgia, serif; margin-right: 4px; vertical-align: -6px; }
+    .choice-list { display: grid; gap: 8px; margin-top: 14px; }
+    .choice-btn { width: 100%; text-align: left; padding: 11px 13px; border-radius: 13px; color: #6c5968; background: rgba(255,255,255,.6); border: 1px solid rgba(255,255,255,.85); transition: .2s; font-size: 12px; }
+    .choice-btn:hover { background: #fff; transform: translateX(3px); box-shadow: 0 7px 16px rgba(113,72,104,.1); }
+    .poem { margin: 14px 0; padding: 18px 20px; border-radius: 16px; background: rgba(255,255,255,.56); color: #745d70; font-family: cursive; font-size: 17px; line-height: 2.1; letter-spacing: .07em; box-shadow: inset 0 0 0 1px rgba(201,153,166,.12); }
+    .poem-line { display: block; }
+    .initial { display: inline-block; min-width: 1.3em; border-radius: 7px; transition: .25s; }
+    .initial.highlight { color: var(--pink-deep); background: #fff1a9; box-shadow: 0 3px 0 rgba(213,164,75,.16); transform: rotate(-3deg) scale(1.08); }
+    .answer-reveal { min-height: 24px; margin: 9px 0 0; color: var(--pink-deep); font-size: 13px; font-weight: 700; }
+    .fragment-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 14px 0; }
+    .fragment-piece { min-height: 116px; padding: 10px; border-radius: 12px; color: #7b675d; background: linear-gradient(150deg, #fff6dc, #f8e4ca); border: 1px dashed rgba(180,132,113,.45); transform: rotate(var(--tilt)); box-shadow: 0 6px 11px rgba(141,91,76,.09); }
+    .fragment-piece.missing { display: grid; place-items: center; color: rgba(122,96,89,.48); background: rgba(255,255,255,.36); border-style: dashed; }
+    .fragment-piece b { display: block; font-size: 10px; color: #c08a72; margin-bottom: 8px; }
+    .fragment-piece span { font-family: cursive; font-size: 12px; line-height: 1.7; }
+    .timeline { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin: 13px 0; }
+    .timeline-card { padding: 12px; border-radius: 14px; background: rgba(255,255,255,.55); border-top: 3px solid var(--accent, var(--pink)); }
+    .timeline-card strong { display: block; font-size: 13px; color: var(--accent, var(--pink-deep)); }
+    .timeline-card p { margin: 7px 0 0; font-size: 11px; line-height: 1.65; }
+    .logic-feedback { min-height: 22px; color: var(--pink-deep); font-size: 12px; }
+    .painting { min-height: 290px; position: relative; overflow: hidden; margin: 13px 0; border-radius: 18px; background: linear-gradient(160deg, #c7d9c7, #f4d3c9 52%, #c68da0 53%, #f5ddd6); border: 8px solid rgba(176,130,119,.32); box-shadow: inset 0 0 30px rgba(103,75,91,.1); }
+    .painting::before { content: ""; position: absolute; left: 12%; top: 8%; width: 44%; height: 72%; border-radius: 50%; background: radial-gradient(circle at 15% 42%, #f7c2d5 0 15%, transparent 16%), radial-gradient(circle at 62% 23%, #efa1bc 0 20%, transparent 21%), radial-gradient(circle at 72% 66%, #f5b8ca 0 25%, transparent 26%), #d88da8; opacity: .8; }
+    .painting::after { content: ""; position: absolute; left: 31%; bottom: 15%; width: 39%; height: 17%; border-radius: 50% 50% 9px 9px; background: #9c6b63; box-shadow: 0 15px 0 -2px rgba(72,53,67,.18); }
+    .paint-horizon { position: absolute; left: 0; right: 0; bottom: 0; height: 31%; background: rgba(255,247,228,.37); clip-path: polygon(0 45%, 100% 5%, 100% 100%, 0 100%); }
+    .paint-book { position: absolute; left: 66%; bottom: 21%; width: 12%; height: 8%; background: #e4ad7d; transform: rotate(-8deg); border-radius: 3px; }
+    .paint-cup { position: absolute; right: 12%; bottom: 20%; width: 11%; height: 16%; border-radius: 3px 3px 8px 8px; background: #fff1d0; box-shadow: inset 0 5px rgba(232,139,157,.35); }
+    .paint-cup::before { content: "你"; position: absolute; inset: 23% 0 auto; text-align: center; color: #e58da1; font-family: cursive; font-size: 16px; }
+    .paint-hotspot { position: absolute; z-index: 3; transform: translate(-50%, -50%); width: 80px; height: 54px; border-radius: 14px; background: rgba(255,255,255,.2); border: 1px solid rgba(255,255,255,.62); color: rgba(255,255,255,.9); font-size: 11px; transition: .2s; }
+    .paint-hotspot:hover { background: rgba(255,215,0,.24); box-shadow: 0 0 0 4px rgba(255,215,0,.18); }
+    .paint-silhouette { position: absolute; left: 50%; bottom: 20%; width: 28%; height: 36%; opacity: 0; transform: translateX(-50%) scale(.75); transition: .8s; }
+    .paint-silhouette.show { opacity: .64; transform: translateX(-50%) scale(1); }
+    .paint-silhouette::before, .paint-silhouette::after { content: ""; position: absolute; bottom: 0; width: 34%; height: 86%; border-radius: 50% 50% 20% 20%; background: #6b5268; }
+    .paint-silhouette::before { left: 15%; transform: rotate(-4deg); } .paint-silhouette::after { right: 15%; transform: rotate(5deg); }
+    .final-clues { display: grid; gap: 7px; margin: 12px 0; }
+    .final-clue { display: flex; gap: 8px; align-items: flex-start; padding: 9px 11px; border-radius: 12px; background: rgba(255,255,255,.54); font-size: 11px; line-height: 1.6; }
+    .password-row { display: flex; gap: 8px; margin-top: 13px; }
+    .password-input { flex: 1; min-width: 0; height: 42px; padding: 0 14px; border-radius: 12px; color: #665565; background: rgba(255,255,255,.82); border: 1px solid rgba(224,176,190,.42); }
+    .password-input.shake { animation: shake .38s; }
+    .ending-panel { text-align: center; padding: 32px 24px 25px; background: linear-gradient(145deg, rgba(255,253,246,.97), rgba(255,224,234,.97)); }
+    .ending-symbol { font-size: 47px; margin-bottom: 3px; filter: drop-shadow(0 7px 10px rgba(202,119,151,.2)); }
+    .ending-panel h2 { font-family: cursive; font-size: 29px; color: #875b74; }
+    .ending-panel .ending-text { max-width: 470px; margin: 0 auto; line-height: 2; }
+    .ending-score { display: inline-flex; padding: 7px 13px; border-radius: 999px; margin-top: 6px; color: #96713d; background: #fff4cb; font-size: 12px; }
+    .journal-section { margin-top: 15px; }
+    .journal-section h3 { display: flex; align-items: center; gap: 7px; margin: 0 0 8px; }
+    .journal-section h3::after { content: ""; height: 1px; flex: 1; background: var(--line); }
+    .journal-list { display: grid; gap: 6px; }
+    .journal-entry { padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,.43); font-size: 11px; line-height: 1.65; }
+    .journal-entry time { color: var(--pink-deep); margin-right: 7px; }
+
+    .hidden { display: none !important; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes riseIn { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-7px); } 75% { transform: translateX(7px); } }
+    .shake-screen { animation: shake .42s; }
+    .sparkle { animation: sparkle .65s ease-out; }
+    @keyframes sparkle { 0% { box-shadow: 0 0 0 0 rgba(255,215,0,.5); } 60% { box-shadow: 0 0 0 18px rgba(255,215,0,0); } 100% { box-shadow: 0 0 0 0 rgba(255,215,0,0); } }
+
+    @media (max-width: 1180px) {
+      .main-layout { grid-template-columns: 205px minmax(0, 1fr) 205px; gap: 12px; }
+      .brand { min-width: 205px; }
+      .scene-art { min-height: 430px; }
+      .hotspot { min-width: 76px; font-size: 10px; }
+    }
+    @media (max-width: 930px) {
+      .topbar { flex-wrap: wrap; gap: 12px; }
+      .brand { min-width: 0; flex: 1; }
+      .day-progress { order: 3; flex-basis: 100%; max-width: none; }
+      .top-actions { margin-left: 0; }
+      .main-layout { grid-template-columns: 1fr; padding-bottom: 130px; }
+      .left-rail, .right-rail { display: none; }
+      .scene-art { min-height: 500px; }
+      .scene-caption { font-size: 10px; }
+      .icon-btn .button-label { display: none; }
+      .icon-btn { width: 38px; padding: 0; }
+    }
+    @media (max-width: 600px) {
+      .topbar, .main-layout, .bottom-inner { width: min(100% - 18px, 1440px); }
+      .topbar { padding-top: 10px; }
+      .brand strong { font-size: 13px; }
+      .brand small { font-size: 10px; }
+      .scene-shell { padding: 8px; border-radius: 20px; }
+      .scene-head { padding-inline: 4px; }
+      .scene-head h1 { font-size: 15px; }
+      .scene-art { min-height: 445px; border-radius: 15px; }
+      .hotspot { max-width: 108px; min-width: 68px; padding: 7px; font-size: 9px; }
+      .story-card { padding: 14px; border-radius: 17px; }
+      .story-card h2 { font-size: 16px; }
+      .story-card p { font-size: 12px; }
+      .story-meta { display: none; }
+      .bottom-bar { padding-inline: 9px; }
+      .bottom-inner { width: 100%; gap: 7px; }
+      .inventory { padding: 6px; border-radius: 14px; }
+      .inventory-title { display: none; }
+      .memory-btn { width: 42px; height: 42px; }
+      .modal-backdrop { padding: 9px; }
+      .modal-panel { padding: 18px; border-radius: 20px; max-height: 91vh; }
+      .modal-panel h2 { font-size: 18px; }
+      .fragment-grid { grid-template-columns: repeat(2, 1fr); }
+      .fragment-piece { min-height: 96px; }
+      .timeline { grid-template-columns: 1fr; }
+      .timeline-card { padding: 10px; }
+      .timeline-card p { margin: 4px 0 0; }
+      .painting { min-height: 245px; }
+      .password-row { flex-direction: column; }
+      .chapter-overlay strong { font-size: 31px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <div class="petals" id="petals" aria-hidden="true"></div>
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">🌸</div>
+        <div><strong>樱丘学园</strong><small>五日解密物语 · 樱花之约</small></div>
+      </div>
+      <div class="day-progress">
+        <div class="day-progress-line"><strong id="day-label">Day 1「信」</strong><span id="clock-label">上午 08:10</span></div>
+        <div class="day-dots" id="day-dots"></div>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" id="journal-btn" title="打开笔记本">📖 <span class="button-label">笔记</span></button>
+        <button class="icon-btn" id="save-btn" title="保存进度">💾 <span class="button-label">保存</span></button>
+        <button class="icon-btn" id="load-btn" title="读取进度">↩ <span class="button-label">读档</span></button>
+        <button class="icon-btn" id="sound-btn" title="音效开关">🔊</button>
+        <button class="icon-btn" id="settings-btn" title="设置">⚙</button>
+      </div>
+    </header>
+
+    <main class="main-layout">
+      <aside class="rail left-rail">
+        <div class="rail-card player-card">
+          <div class="player-avatar">📝</div>
+          <strong>转学生 · 你</strong>
+          <p>高二（B）班。你把没说出口的话，画成了花。</p>
+        </div>
+        <div class="rail-card">
+          <div class="rail-title"><strong>当前章节</strong><span id="chapter-mini">第 1 章</span></div>
+          <div class="chapter-quote" id="chapter-quote">如果你愿意找到我，就来解开我留下的痕迹吧。</div>
+        </div>
+        <div class="rail-card">
+          <div class="rail-title"><strong>校园地图</strong><span>点击前往</span></div>
+          <nav class="scene-nav" id="scene-nav"></nav>
+        </div>
+        <div class="rail-card">
+          <div class="rail-title"><strong>线索簿</strong><span id="clue-count">0 条</span></div>
+          <div class="clue-list" id="clue-list"></div>
+        </div>
+      </aside>
+
+      <section class="game-column">
+        <div class="scene-shell">
+          <div class="scene-head">
+            <div><h1 id="scene-title">教室</h1><p id="scene-desc">文化祭前的早晨，阳光落在你的课桌边。</p></div>
+            <div class="scene-weather" id="scene-weather">🌤 海风很轻</div>
+          </div>
+          <div class="scene-art classroom" id="scene-art"></div>
+          <div class="scene-caption"><span>提示：悬停或点击带有 ✦ 的区域进行调查。</span><b id="scene-caption-right">自动存档已开启</b></div>
+        </div>
+        <div class="story-card">
+          <div class="story-kicker" id="story-kicker">四月 · 早晨 08:10</div>
+          <h2 id="story-title">抽屉里的淡粉色信封</h2>
+          <p id="story-text">你在课桌抽屉里发现一封没有署名的信。信纸角落，画着一朵小小的樱花。</p>
+          <div class="story-actions">
+            <button class="primary-btn" id="case-btn">🔎 调查本日谜题</button>
+            <button class="secondary-btn" id="story-btn">✦ 记住这句话</button>
+            <span class="story-meta" id="story-meta">线索会自动写入笔记本</span>
+          </div>
+        </div>
+      </section>
+
+      <aside class="rail right-rail">
+        <div class="rail-card case-board">
+          <div class="rail-title"><strong>案件进度</strong><span id="puzzle-status">调查中</span></div>
+          <div class="case-row"><div><div class="case-number" id="case-number">1</div><div class="case-label">已解开谜题</div></div><span class="heart-meter" id="case-hearts">♡♡♡♡♡</span></div>
+          <div class="case-progress"><span id="case-progress-fill" style="width: 0%"></span></div>
+          <div class="case-row"><b>碎信</b><span id="fragment-count">0 / 5</span></div>
+        </div>
+        <div class="rail-card">
+          <div class="rail-title"><strong>她们的视线</strong><span>点击聊天</span></div>
+          <div class="character-list" id="character-list"></div>
+        </div>
+        <div class="rail-card">
+          <div class="rail-title"><strong>隐藏成就</strong><span id="achievement-count">0 / 4</span></div>
+          <div class="achievement-list" id="achievement-list"></div>
+        </div>
+        <div class="rail-card">
+          <div class="rail-title"><strong>小提示</strong><span>H</span></div>
+          <div class="clue-empty">卡住时点击右下角的 🌸。每个谜题最多给三次渐进提示。</div>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="bottom-bar">
+      <div class="bottom-inner">
+        <div class="inventory"><span class="inventory-title">随身物品</span><div class="inventory-items" id="inventory-items"></div></div>
+        <button class="memory-btn" id="memory-btn" title="回忆提示">🌸</button>
+      </div>
+    </footer>
+    <div class="toast" id="toast" role="status"></div>
+    <div class="chapter-overlay" id="chapter-overlay"><div class="chapter-inner"><small id="chapter-overlay-day">DAY 1</small><strong id="chapter-overlay-title">信</strong><span id="chapter-overlay-subtitle">故事从一封信开始</span></div></div>
+  </div>
+  <div id="modal-root"></div>
+
+  <script>
+    /* =========================
+       数据层：剧情、角色、谜题、场景全部集中在这里，方便继续扩写。
+       ========================= */
+    const GAME_DATA = {
+      title: "樱丘学园 · 樱花之约",
+      chapters: [
+        { day: 1, title: "信", subtitle: "故事从一封信开始", quote: "如果你愿意找到我，就来解开我留下的痕迹吧。" },
+        { day: 2, title: "迹", subtitle: "有些痕迹，比记忆更诚实", quote: "第一次见到你那天，风把樱花吹进了空教室。" },
+        { day: 3, title: "声", subtitle: "广播里藏着没有说完的话", quote: "如果声音能穿过一整栋教学楼，你会听见谁？" },
+        { day: 4, title: "雨", subtitle: "被雨水打湿的字迹", quote: "明天，樱花树下。不要迟到。" },
+        { day: 5, title: "花", subtitle: "最后一封信，最后一个答案", quote: "海风吹起花瓣时，请回头看看。" }
+      ],
+      characters: {
+        sunian: { name: "苏念", role: "广播站成员 · 同桌", emoji: "🍓", color: "#e79c61", short: "橙色的吵闹与突然安静" },
+        lin: { name: "林知予", role: "学生会长 · 图书馆常客", emoji: "📘", color: "#7ea8c5", short: "蓝色的礼貌与多停留的一秒" },
+        xia: { name: "夏晚晴", role: "美术社社长", emoji: "🎨", color: "#7eb59b", short: "绿色的颜料与未完成的画" },
+        teacher: { name: "方老师", role: "班主任 · 旁观者", emoji: "☕", color: "#a37b91", short: "总能在恰好的时候提醒你" }
+      },
+      items: {
+        pinkEnvelope: { emoji: "✉️", name: "淡粉色信封", detail: "没有署名，只有一朵小樱花和一句邀请。" },
+        strawberryMilk: { emoji: "🥛", name: "草莓牛奶", detail: "苏念抽屉里总有一瓶。今天这瓶被塞进了你的书包。" },
+        keyClue: { emoji: "🗝️", name: "钥匙线索", detail: "方老师说：天台门的钥匙，常在那盆最不怕风的多肉下面。" },
+        key: { emoji: "🔑", name: "天台钥匙", detail: "钥匙圈上挂着一枚很旧的樱花御守。" },
+        bookNote: { emoji: "📖", name: "扉页批注", detail: "林知予在书里写下：‘同一阵风，会把两个人带到同一个地方。’" },
+        songSheet: { emoji: "🎼", name: "点歌单", detail: "被圈出的曲目首字母，组成了‘回头’。" },
+        paintClue: { emoji: "🖌️", name: "颜料痕迹", detail: "从画架一路延伸到围栏，像有人故意留下的方向。" },
+        oldPhoto: { emoji: "📷", name: "方老师的旧照片", detail: "照片背后写着：‘喜欢一个人时，勇气总是来得很慢。’" }
+      },
+      fragments: {
+        f1: { name: "碎片一", text: "第一次见到你那天，" },
+        f2: { name: "碎片二", text: "风把一朵樱花吹进了空教室。" },
+        f3: { name: "碎片三", text: "你低头捡起它，像捡起一段不愿惊动别人的心事。" },
+        f4: { name: "碎片四", text: "我想，也许这就是我开始注意你的理由。" },
+        f5: { name: "碎片五", text: "——写信人，留在你身后的那个人。" }
+      },
+      clues: {
+        acrostic: "藏头诗的首字连成‘天台见你’，写信人常去天台。",
+        sketch: "天台画架上的背影，轮廓与你很像；画布背面写着‘别害怕回头’。",
+        fragments: "碎信拼合：写信人从你转学第一天起就注意着你。",
+        schedule: "不在场证明：林知予的学生会会议与信件时间重叠，她暂时被排除。",
+        broadcast: "广播里的曲目首字母组成‘回头’，像是在提醒你别只向前走。",
+        rain: "雨水冲掉了大半字迹，最后一句仍然清晰：明天，樱花树下。",
+        painting: "画中真正不属于场景的是奶茶杯——杯上的‘你’，只会被你认出来。",
+        tree: "樱花树的刻痕：S · L · X，三个人都曾在这里停留过。"
+      },
+      scenes: {
+        classroom: { name: "教室", icon: "🏫", minDay: 1, weather: "🌤 海风很轻", desc: "文化祭前的早晨，粉色的光落在你的课桌边。", mood: "远处传来上课铃和翻书声。", className: "classroom", decor: "classroom", hotspots: [
+          { id: "desk", label: "我的课桌抽屉", x: "21%", y: "69%", action: "desk" },
+          { id: "sun-seat", label: "苏念的座位", x: "52%", y: "64%", action: "sun-seat" },
+          { id: "blackboard", label: "黑板值日表", x: "78%", y: "24%", action: "blackboard" },
+          { id: "window", label: "窗外的樱花树", x: "19%", y: "35%", action: "window" },
+          { id: "talk-sun", label: "和苏念说话", x: "64%", y: "79%", action: "talk-sun", character: true }
+        ] },
+        library: { name: "图书馆", icon: "📚", minDay: 1, weather: "📚 灰尘在光里漂浮", desc: "光线从高窗斜射进来，林知予的位置空着。", mood: "安静得能听见书页翻动。", className: "library", decor: "library", hotspots: [
+          { id: "shelf-a", label: "靠门书架", x: "16%", y: "55%", action: "shelf-a" },
+          { id: "shelf-b", label: "靠窗书架", x: "39%", y: "57%", action: "shelf-b" },
+          { id: "shelf-c", label: "最里面书架", x: "84%", y: "55%", action: "shelf-c" },
+          { id: "lin-seat", label: "林知予的座位", x: "65%", y: "70%", action: "lin-seat", character: true },
+          { id: "ledger", label: "借阅登记本", x: "75%", y: "84%", action: "ledger" },
+          { id: "plant", label: "窗台盆栽", x: "46%", y: "26%", action: "plant" },
+          { id: "talk-lin", label: "和林知予说话", x: "58%", y: "55%", action: "talk-lin", character: true }
+        ] },
+        sakura: { name: "樱花道", icon: "🌸", minDay: 1, weather: "🌸 花瓣向海边飘", desc: "校园后坡的小路，长椅旁的风总比别处更温柔。", mood: "吉他旋律混在花瓣落下的声音里。", className: "sakura", decor: "sakura", hotspots: [
+          { id: "bench", label: "长椅下面", x: "26%", y: "74%", action: "bench" },
+          { id: "tree", label: "樱花树树干", x: "51%", y: "52%", action: "tree" },
+          { id: "poster", label: "文化祭海报", x: "82%", y: "62%", action: "poster" },
+          { id: "ground", label: "被风吹落的纸片", x: "62%", y: "87%", action: "ground" }
+        ] },
+        rooftop: { name: "天台", icon: "🎨", minDay: 2, weather: "🌊 看得见远处的海", desc: "铁丝网外是开阔的海，画架上的颜料还没有干。", mood: "风声、海鸥，还有某个人没有说完的话。", className: "rooftop", decor: "rooftop", hotspots: [
+          { id: "easel", label: "画架上的画", x: "29%", y: "56%", action: "easel" },
+          { id: "succulent", label: "多肉花盆", x: "78%", y: "73%", action: "succulent" },
+          { id: "amulet", label: "围栏上的御守", x: "59%", y: "32%", action: "amulet" },
+          { id: "paint", label: "地上的颜料痕迹", x: "48%", y: "85%", action: "paint" },
+          { id: "talk-xia", label: "和夏晚晴说话", x: "50%", y: "61%", action: "talk-xia", character: true }
+        ] },
+        broadcast: { name: "广播站 / 音乐教室", icon: "🎵", minDay: 3, weather: "🎧 电流声很轻", desc: "调音台亮着绿灯，旧钢琴上压着一张点歌单。", mood: "安静里带一点电流嗡鸣。", className: "broadcast", decor: "broadcast", hotspots: [
+          { id: "song-sheet", label: "点歌单夹", x: "68%", y: "36%", action: "song-sheet" },
+          { id: "piano", label: "旧钢琴", x: "79%", y: "70%", action: "piano" },
+          { id: "console", label: "调音台抽屉", x: "25%", y: "63%", action: "console" },
+          { id: "photos", label: "墙上的合影", x: "31%", y: "25%", action: "photos" },
+          { id: "talk-sun-radio", label: "广播室里的苏念", x: "51%", y: "49%", action: "talk-sun", character: true }
+        ] },
+        hallway: { name: "走廊 / 楼梯间", icon: "🚪", minDay: 1, weather: "☔ 云层压低了", desc: "公告栏上贴着文化祭通知，楼梯尽头通往那扇天台门。", mood: "脚步声在拐角处停了一秒。", className: "hallway rain", decor: "hallway", hotspots: [
+          { id: "notice", label: "公告栏", x: "22%", y: "58%", action: "notice" },
+          { id: "shoe", label: "鞋柜里的信", x: "28%", y: "78%", action: "shoe" },
+          { id: "hall-window", label: "走廊窗户", x: "80%", y: "39%", action: "hall-window" },
+          { id: "teacher", label: "方老师的办公室", x: "58%", y: "75%", action: "teacher", character: true }
+        ] }
+      },
+      hints: {
+        1: ["先看看那封信。每一行的开头，可能比句子本身更重要。", "把四行诗的第一个字排在一起。", "答案是‘天台见你’，线索指向天台。"],
+        2: ["碎信分散在你已经熟悉的几个地点，先和她们聊聊。", "教室、樱花道、图书馆、走廊、天台各有一片。", "集齐五片后，打开‘拼合碎信’。"],
+        3: ["把三个人的放学后行程按时间排开。", "重点看‘谁在信上写的老地方’与‘谁在同一时间有明确记录’。", "林知予的学生会会议与时间重叠，先排除她。"],
+        4: ["画里有树、长椅、书，还有一杯看起来很普通的饮料。", "找出那个只有你会注意到的细节。", "奶茶杯上写着你的昵称‘你’，它不属于画中的场景。"],
+        5: ["前四天的线索都在笔记本里，最后一句话不是暗号，而是一句告白。", "把‘很久以前就开始注意你’说出来。", "输入：我喜欢你很久了。"]
+      }
+    };
+
+    const STORAGE_KEY = "sakura-letters-single-file-v1";
+    const DEFAULT_STATE = {
+      version: 1, started: false, day: 1, scene: "classroom", hour: 8, minute: 10,
+      clues: [], inventory: [], fragments: [], bookMarks: [], paintMarks: [], achievements: [],
+      affinity: { sunian: 0, lin: 0, xia: 0 }, interactions: { sunian: 0, lin: 0, xia: 0, sunSeat: 0 },
+      flags: { day1Letter: false, acrosticAnalyzed: false, puzzles: {}, keyClue: false, keyFound: false, xiaSketch: false, logicWrongAll: false, oldPhoto: false, finalCorrect: false, finished: false, ending: "", nightOwl: false },
+      logicWrongSet: [], wrongLogic: 0, hintUses: {}, eventLog: [], savedAt: null
+    };
+    let state = clone(DEFAULT_STATE);
+    let currentStory = { kicker: "四月 · 早晨 08:10", title: "抽屉里的淡粉色信封", text: "你在课桌抽屉里发现一封没有署名的信。信纸角落，画着一朵小小的樱花。" };
+    let modalContext = null;
+    let toastTimer = null;
+
+    function clone(value) { return JSON.parse(JSON.stringify(value)); }
+    function mergeState(raw) {
+      const next = clone(DEFAULT_STATE);
+      if (!raw || typeof raw !== "object") return next;
+      Object.assign(next, raw);
+      next.affinity = Object.assign(clone(DEFAULT_STATE.affinity), raw.affinity || {});
+      next.interactions = Object.assign(clone(DEFAULT_STATE.interactions), raw.interactions || {});
+      next.flags = Object.assign(clone(DEFAULT_STATE.flags), raw.flags || {});
+      next.flags.puzzles = Object.assign({}, raw.flags?.puzzles || {});
+      next.clues = Array.isArray(raw.clues) ? raw.clues : [];
+      next.inventory = Array.isArray(raw.inventory) ? raw.inventory : [];
+      next.fragments = Array.isArray(raw.fragments) ? raw.fragments : [];
+      next.bookMarks = Array.isArray(raw.bookMarks) ? raw.bookMarks : [];
+      next.paintMarks = Array.isArray(raw.paintMarks) ? raw.paintMarks : [];
+      next.achievements = Array.isArray(raw.achievements) ? raw.achievements : [];
+      next.logicWrongSet = Array.isArray(raw.logicWrongSet) ? raw.logicWrongSet : [];
+      next.eventLog = Array.isArray(raw.eventLog) ? raw.eventLog : [];
+      next.hintUses = raw.hintUses || {};
+      return next;
+    }
+    function el(id) { return document.getElementById(id); }
+    function escapeHtml(text) { return String(text).replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[c])); }
+    function formatClock() { const h = state.hour; const part = h < 12 ? "上午" : h < 18 ? "下午" : "傍晚"; return `${part} ${String(h).padStart(2,"0")}:${String(state.minute).padStart(2,"0")}`; }
+    function tick(minutes = 10) {
+      state.minute += minutes;
+      while (state.minute >= 60) { state.hour += 1; state.minute -= 60; }
+      if (state.hour >= 24) state.hour = state.hour % 24;
+      if (state.hour >= 22 || state.hour < 5) state.flags.nightOwl = true;
+      checkAchievements();
+    }
+    function logEvent(text) {
+      state.eventLog.unshift({ day: state.day, time: formatClock(), text });
+      state.eventLog = state.eventLog.slice(0, 28);
+    }
+    function saveGame(silent = false) {
+      if (!state.started) return;
+      state.savedAt = new Date().toLocaleString("zh-CN", { hour12: false });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      if (!silent) showToast(`已保存 · ${state.savedAt}`);
+      renderAll();
+    }
+    function readSaved() {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"); } catch (error) { return null; }
+    }
+    function resetGame() {
+      state = clone(DEFAULT_STATE);
+      currentStory = { kicker: "四月 · 早晨 08:10", title: "抽屉里的淡粉色信封", text: "你在课桌抽屉里发现一封没有署名的信。信纸角落，画着一朵小小的樱花。" };
+      localStorage.removeItem(STORAGE_KEY);
+      closeModal(); renderAll(); showStartScreen();
+    }
+    function addItem(id) {
+      if (!state.inventory.includes(id)) {
+        state.inventory.push(id); logEvent(`获得道具：${GAME_DATA.items[id]?.name || id}`); showToast(`获得道具 · ${GAME_DATA.items[id]?.emoji || "✦"} ${GAME_DATA.items[id]?.name || id}`); sparkle(); saveGame(true);
+      }
+    }
+    function addClue(id) {
+      if (!state.clues.includes(id)) { state.clues.push(id); logEvent(`记录线索：${GAME_DATA.clues[id] || id}`); showToast("线索已写入笔记本 ✦"); saveGame(true); }
+      renderAll();
+    }
+    function collectFragment(id) {
+      if (!state.fragments.includes(id)) {
+        state.fragments.push(id); logEvent(`找到${GAME_DATA.fragments[id].name}`); showToast(`找到 ${GAME_DATA.fragments[id].name} · ${state.fragments.length}/5`); saveGame(true);
+        if (state.fragments.length === 5) setStory("Day 2 · 碎信齐了", "五片纸边缘终于对上。你看见一段关于‘第一次见到你那天’的描写，字迹却像被风吹散了一样熟悉。", "可以拼合了");
+      }
+      renderAll();
+    }
+    function sparkle() {
+      el("app")?.classList.remove("sparkle"); void el("app")?.offsetWidth; el("app")?.classList.add("sparkle");
+    }
+    function shakeScreen() { el("app")?.classList.remove("shake-screen"); void el("app")?.offsetWidth; el("app")?.classList.add("shake-screen"); }
+    function showToast(text) {
+      const node = el("toast"); if (!node) return;
+      node.textContent = text; node.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => node.classList.remove("show"), 2300);
+    }
+    function setStory(title, text, kicker = `Day ${state.day} · ${formatClock()}`) {
+      currentStory = { kicker, title, text };
+      renderStory();
+    }
+    function renderStory() {
+      el("story-kicker").textContent = currentStory.kicker;
+      el("story-title").textContent = currentStory.title;
+      el("story-text").textContent = currentStory.text;
+    }
+    function chapter() { return GAME_DATA.chapters[state.day - 1] || GAME_DATA.chapters[0]; }
+    function showChapter(day) {
+      const data = GAME_DATA.chapters[day - 1]; const overlay = el("chapter-overlay");
+      el("chapter-overlay-day").textContent = `DAY ${day}`; el("chapter-overlay-title").textContent = data.title; el("chapter-overlay-subtitle").textContent = data.subtitle;
+      overlay.classList.add("show"); setTimeout(() => overlay.classList.remove("show"), 1900);
+    }
+    function advanceDay(nextDay) {
+      state.day = nextDay;
+      state.scene = nextDay === 2 ? "library" : nextDay === 3 ? "broadcast" : nextDay === 4 ? "rooftop" : nextDay === 5 ? "sakura" : "classroom";
+      tick(38); logEvent(`进入第 ${nextDay} 天：${GAME_DATA.chapters[nextDay - 1].title}`); saveGame(true); renderAll(); showChapter(nextDay);
+      const intros = {
+        2: ["Day 2「迹」", "第二封信出现在图书馆你常坐的位置旁。她们每个人，似乎都知道一点你不知道的事。"],
+        3: ["Day 3「声」", "广播站的点歌单里夹着第三封信。文化祭的脚步声越来越近，广播里却传来一首像暗号的歌。"],
+        4: ["Day 4「雨」", "雨水打湿了第四封信，最后一句清晰得不容错认：明天，樱花树下。"],
+        5: ["Day 5「花」", "文化祭当天。前四天的线索都指向同一个地方，最后一封信正在等你。"]
+      };
+      if (intros[nextDay]) setStory(intros[nextDay][0], intros[nextDay][1], "章节记录");
+    }
+    function completePuzzle(day, clueId, storyTitle, storyText) {
+      if (state.flags.puzzles[`day${day}`]) return;
+      state.flags.puzzles[`day${day}`] = true; addClue(clueId); logEvent(`解开 Day ${day} 核心谜题`); sparkle(); AudioEngine.success(); closeModal();
+      setStory(storyTitle, storyText, `Day ${day} · 谜题解开`);
+      if (day < 4) setTimeout(() => advanceDay(day + 1), 600); else if (day === 4) setTimeout(() => advanceDay(5), 600);
+      saveGame(true); renderAll();
+    }
+    function isPuzzleSolved(day) { return Boolean(state.flags.puzzles[`day${day}`]); }
+    function countSolved() { return [1,2,3,4].filter(isPuzzleSolved).length; }
+
+    /* =========================
+       渲染层：根据状态重绘场景、UI、道具和角色关系。
+       ========================= */
+    function renderAll() {
+      const c = chapter();
+      el("day-label").textContent = `Day ${state.day}「${c.title}」`;
+      el("clock-label").textContent = formatClock();
+      el("chapter-mini").textContent = `第 ${state.day} 章`;
+      el("chapter-quote").textContent = c.quote;
+      el("day-dots").innerHTML = GAME_DATA.chapters.map(d => `<span class="day-dot ${d.day < state.day ? "done" : d.day === state.day ? "current" : ""}" title="Day ${d.day}「${d.title}」"></span>`).join("");
+      renderScene(); renderNav(); renderClues(); renderInventory(); renderCharacters(); renderAchievements(); renderCaseBoard(); renderStory();
+      el("sound-btn").textContent = AudioEngine.enabled ? "🔊" : "🔇";
+    }
+    function sceneDecor(type) {
+      const map = {
+        classroom: `<div class="sky-glow"></div><div class="prop classroom-window"></div><div class="prop blackboard">4月 · 樱丘学园</div><div class="prop desk desk-a"></div><div class="prop desk desk-b"></div><div class="prop desk desk-c"></div><div class="prop chair chair-a"></div><div class="prop chair chair-b"></div><div class="prop chair chair-c"></div><div class="ambient-label">“嗯……让我想想。”</div><div class="scene-stamp">2-B CLASS</div>`,
+        library: `<div class="sky-glow"></div><div class="prop library-shelf shelf-a"></div><div class="prop library-shelf shelf-b"></div><div class="prop library-shelf shelf-c"></div><div class="library-table"></div><div class="library-lamp"></div><div class="ambient-label">请把声音留在书页里。</div><div class="scene-stamp">LIBRARY · 14:20</div>`,
+        sakura: `<div class="sakura-crown"></div><div class="sakura-trunk"></div><div class="sakura-path"></div><div class="bench"></div><div class="ambient-label">海风把花瓣送得很远。</div><div class="scene-stamp">SPRING FESTIVAL</div>`,
+        rooftop: `<div class="sky-glow"></div><div class="rooftop-fence"></div><div class="rooftop-sea"></div><div class="easel"></div><div class="plant"></div><div class="ambient-label">风把画纸吹得哗啦作响。</div><div class="scene-stamp">ROOFTOP · 16:10</div>`,
+        broadcast: `<div class="sky-glow"></div><div class="broadcast-console"></div><div class="microphone"></div><div class="piano"></div><div class="ambient-label">ON AIR · 请留意下一首歌。</div><div class="scene-stamp">RADIO ROOM</div>`,
+        hallway: `<div class="hall-window"></div><div class="hall-lockers"></div><div class="hall-floor"></div><div class="ambient-label">雨声落在玻璃上，像没说完的话。</div><div class="scene-stamp">文化祭前夕</div>`
+      };
+      return map[type] || "";
+    }
+    function renderScene() {
+      const data = GAME_DATA.scenes[state.scene];
+      if (!data) { state.scene = "classroom"; return renderScene(); }
+      const art = el("scene-art");
+      art.className = `scene-art ${data.className}`;
+      art.innerHTML = `${sceneDecor(data.decor)}<div class="scene-elements" id="scene-elements"></div>`;
+      el("scene-title").textContent = `${data.icon} ${data.name}`;
+      el("scene-desc").textContent = data.desc;
+      el("scene-weather").textContent = data.weather;
+      el("scene-caption-right").textContent = state.savedAt ? `上次保存 ${state.savedAt}` : "自动存档已开启";
+      const holder = el("scene-elements");
+      data.hotspots.forEach(h => {
+        const b = document.createElement("button");
+        b.className = `hotspot ${h.character ? "character" : ""}`;
+        b.style.left = h.x; b.style.top = h.y; b.textContent = h.label;
+        b.dataset.action = h.action; b.dataset.id = h.id; b.setAttribute("aria-label", h.label);
+        holder.appendChild(b);
+      });
+    }
+    function renderNav() {
+      el("scene-nav").innerHTML = Object.entries(GAME_DATA.scenes).map(([id, data]) => {
+        const locked = data.minDay > state.day; return `<button class="${id === state.scene ? "active" : ""} ${locked ? "locked" : ""}" data-scene="${id}" ${locked ? "title=到第${data.minDay}天解锁" : ""}><span class="scene-icon">${data.icon}</span><span>${data.name}</span><em>${locked ? "🔒" : id === state.scene ? "现在" : "→"}</em></button>`;
+      }).join("");
+    }
+    function renderClues() {
+      const rows = state.clues.slice(-5).reverse(); el("clue-count").textContent = `${state.clues.length} 条`;
+      el("clue-list").innerHTML = rows.length ? rows.map(id => `<div class="clue-row"><span>✦</span><span>${escapeHtml(GAME_DATA.clues[id] || id)}</span></div>`).join("") : `<div class="clue-empty">还没有线索。先从你的课桌开始调查吧。</div>`;
+    }
+    function renderInventory() {
+      const node = el("inventory-items");
+      node.innerHTML = state.inventory.length ? state.inventory.map(id => { const item = GAME_DATA.items[id]; return `<button class="item-card" data-item="${id}" title="${escapeHtml(item.detail)}"><span>${item.emoji}</span><small>${escapeHtml(item.name)}</small></button>`; }).join("") : `<span class="inventory-empty">空空的。也许今天会收到什么。</span>`;
+    }
+    function hearts(value) { return "♥".repeat(Math.min(5, value)) + "♡".repeat(Math.max(0, 5 - value)); }
+    function renderCharacters() {
+      const ids = ["sunian", "lin", "xia"];
+      el("character-list").innerHTML = ids.map(id => { const c = GAME_DATA.characters[id]; return `<button class="character-card" data-character="${id}" style="--accent:${c.color};color:${c.color}"><span class="character-avatar">${c.emoji}</span><span><strong style="color:${c.color}">${c.name}</strong><small>${c.short}</small></span><span class="heart-meter">${hearts(state.affinity[id])}</span></button>`; }).join("");
+    }
+    const ACHIEVEMENTS = [
+      { id: "milk", name: "草莓牛奶爱好者", desc: "调查苏念座位 3 次", emoji: "🥛", ok: () => state.interactions.sunSeat >= 3 },
+      { id: "bookworm", name: "书虫", desc: "调查图书馆所有书架", emoji: "📚", ok: () => state.bookMarks.length >= 3 },
+      { id: "painterEye", name: "画家之眼", desc: "找到天台所有颜料痕迹", emoji: "🖌️", ok: () => state.paintMarks.length >= 3 },
+      { id: "nightOwl", name: "夜猫子", desc: "在晚上 10 点后仍在调查", emoji: "🌙", ok: () => state.flags.nightOwl }
+    ];
+    function checkAchievements() {
+      const unlocked = ACHIEVEMENTS.filter(a => a.ok()).map(a => a.id);
+      const newIds = unlocked.filter(id => !state.achievements.includes(id));
+      state.achievements = [...new Set([...state.achievements, ...unlocked])];
+      if (newIds.length) { const latest = newIds[newIds.length - 1]; showToast(`解锁成就 · ${ACHIEVEMENTS.find(a => a.id === latest)?.name}`); saveGame(true); }
+    }
+    function renderAchievements() {
+      checkAchievements(); const unlocked = state.achievements.length; el("achievement-count").textContent = `${unlocked} / ${ACHIEVEMENTS.length}`;
+      el("achievement-list").innerHTML = ACHIEVEMENTS.map(a => `<div class="achievement ${state.achievements.includes(a.id) ? "unlocked" : ""}"><span class="badge">${a.emoji}</span><span><b>${a.name}</b><br>${a.desc}</span></div>`).join("");
+    }
+    function renderCaseBoard() {
+      el("case-number").textContent = countSolved(); el("case-progress-fill").style.width = `${countSolved() / 4 * 100}%`; el("fragment-count").textContent = `${state.fragments.length} / 5`; el("puzzle-status").textContent = state.flags.finished ? "已结案" : countSolved() === 4 ? "等待答案" : "调查中"; el("case-hearts").textContent = hearts(Math.max(state.affinity.sunian, state.affinity.lin, state.affinity.xia));
+      const label = state.day === 5 ? "🔐 输入最后密码" : state.day === 2 && state.fragments.length === 5 ? "🧩 拼合碎信" : state.day === 3 ? "🕰️ 查看时间线" : state.day === 4 ? "🖼️ 调查画中之谜" : "🔎 调查本日谜题"; el("case-btn").textContent = label;
+    }
+
+    /* =========================
+       逻辑层：场景点击、谜题、对话、存档、结局。
+       ========================= */
+    function navigateScene(id) {
+      const data = GAME_DATA.scenes[id];
+      if (!data) return;
+      if (data.minDay > state.day) { showToast(`第 ${data.minDay} 天才会开放：${data.name}`); return; }
+      state.scene = id; tick(7); logEvent(`前往${data.name}`); saveGame(true); renderAll();
+    }
+    function handleAction(action, id) {
+      tick(8); AudioEngine.click();
+      switch (action) {
+        case "desk":
+          if (!state.flags.day1Letter) { state.flags.day1Letter = true; addItem("pinkEnvelope"); setStory("第一封信", "淡粉色信封里没有署名，只有一首四行小诗。它的字迹很稳，却像在等你主动发现什么。", "Day 1 · 教室"); openAcrosticPuzzle(); }
+          else showMessage("抽屉里只剩下信封留下的淡淡香气。你把手指放在那朵樱花上，想起‘天台见你’四个字。", "课桌抽屉", "✉️");
+          break;
+        case "sun-seat":
+          state.interactions.sunSeat += 1; checkAchievements();
+          if (state.day >= 2) collectFragment("f1");
+          showMessage(state.interactions.sunSeat === 1 ? "苏念不在座位上，抽屉里却有一瓶草莓牛奶。瓶身贴着便签：‘转学生也要记得吃午饭！’" : "又是一瓶草莓牛奶。苏念把它们藏得很认真，像是希望你每次都能发现。", "苏念的座位", "🍓");
+          break;
+        case "blackboard": addClue("tree"); showMessage("黑板角落的值日表被人用粉笔圈出了‘放学后 16:30，天台附近’。圈痕很轻，像是不想被别人看见。", "黑板上的值日表", "🧾"); break;
+        case "window": setStory("窗外", "操场边的樱花树开得比昨天更满。树下长椅上似乎坐过谁，留下一点被风吹散的纸屑。", "教室 · 窗边"); showToast("你记住了樱花树的位置"); break;
+        case "talk-sun": openCharacterDialogue("sunian"); break;
+        case "shelf-a": markShelf("shelf-a", "f4"); break;
+        case "shelf-b": markShelf("shelf-b", "f3"); break;
+        case "shelf-c": markShelf("shelf-c", "f3"); break;
+        case "lin-seat":
+          state.interactions.lin += 1; if (state.day >= 2) collectFragment("f3");
+          showMessage("林知予的位置靠窗，桌面上摊着一本诗集。扉页有一行很小的字：‘如果她喜欢花，那么先从花期开始记住她。’", "林知予的座位", "📘");
+          break;
+        case "talk-lin": openCharacterDialogue("lin"); break;
+        case "ledger": addClue("schedule"); showMessage("借阅登记本里，林知予借走了一本《海边的四月》。归还日期正好是文化祭当天。", "借阅登记本", "📚"); break;
+        case "plant": addItem("bookNote"); showMessage("盆栽后面夹着一张纸条：‘不要只相信最容易被看见的那个人。’", "窗台盆栽", "🌱"); break;
+        case "bench": if (state.day >= 2) collectFragment("f2"); else showMessage("长椅下面什么也没有，只有几片干樱花。你总觉得，明天再来一次会发现不同的东西。", "樱花道长椅", "🪑"); break;
+        case "tree": addClue("tree"); showMessage("树干上刻着三个模糊的字母：S · L · X。刻痕新旧不一，最下面那道还留着木屑。", "樱花树", "🌸"); break;
+        case "poster": addClue("rain"); showMessage("文化祭海报背面写着：‘最后的舞台不是礼堂，是有人一直等你的地方。’", "文化祭海报", "📌"); break;
+        case "ground": if (state.day >= 2) collectFragment("f4"); else showMessage("风吹来一张空白的纸。你把它压在笔记本里，纸上沾着很浅的绿色颜料。", "地面", "🍃"); break;
+        case "easel":
+          state.flags.xiaSketch = true; addClue("sketch");
+          if (state.day === 4 && !isPuzzleSolved(4)) openVisualPuzzle();
+          else if (state.day >= 2) { collectFragment("f5"); showMessage("画架后的画布仍未完成。夏晚晴没有解释，只说：‘等你看见最后一个细节，它才会像一封完整的信。’", "夏晚晴的画", "🎨"); }
+          else showMessage("画架上是一棵未完成的樱花树，树下站着一个轮廓很像你的背影。", "画架", "🎨");
+          break;
+        case "talk-xia": openCharacterDialogue("xia"); break;
+        case "succulent":
+          if (state.flags.keyClue && !state.flags.keyFound) { state.flags.keyFound = true; addItem("key"); showMessage("多肉花盆下面压着天台钥匙。钥匙圈上的旧御守，被风吹得轻轻摇晃。", "多肉花盆", "🔑"); }
+          else if (state.flags.logicWrongAll && state.day >= 4 && !state.flags.oldPhoto) { state.flags.oldPhoto = true; addItem("oldPhoto"); showMessage("你在花盆底下发现一张被塑料膜包好的旧照片。照片里的方老师比现在年轻很多，身边也有一封淡粉色的信。", "隐藏物品", "📷"); }
+          else showMessage("多肉植物在风里摇了一下。它看起来比任何人都更习惯守着秘密。", "多肉花盆", "🌿");
+          break;
+        case "amulet": addClue("sketch"); showMessage("御守背面绣着一句话：‘回头的时候，不要假装没有看见。’", "旧御守", "🧿"); break;
+        case "paint":
+          ["blue", "green", "pink"].forEach(color => { if (!state.paintMarks.includes(color)) state.paintMarks.push(color); });
+          addItem("paintClue"); checkAchievements(); showMessage("三种颜料在地面上交叠成一条方向：画架 → 围栏 → 樱花道。有人反复走过这条路。", "颜料痕迹", "🖌️"); break;
+        case "song-sheet": addItem("songSheet"); addClue("broadcast"); if (state.day === 3 && !isPuzzleSolved(3)) openLogicPuzzle(); else showMessage("点歌单里被圈出的歌名首字母，拼成了‘回头’。广播室的红灯忽然亮了一下。", "点歌单", "🎼"); break;
+        case "piano": openPianoMiniPuzzle(); break;
+        case "console": showMessage("调音台抽屉里有一张便签：‘声音会留下方向。第三首，音量不要太大。’", "调音台", "🎚️"); break;
+        case "photos": showMessage("广播站合影里，苏念被人用粉色笔圈了出来。圈外还有一个小小的问号，像是故意留给你看的。", "广播站合影", "📸"); break;
+        case "notice": addClue("rain"); showMessage("公告栏上的文化祭日程：明天是最后一天。最后一项活动写着——‘樱花树下，17:00’。", "公告栏", "📌"); break;
+        case "shoe": if (state.day >= 4) { addClue("rain"); showMessage("鞋柜里的信被雨打湿，字迹只剩最后一句：‘明天，樱花树下。’", "被雨水打湿的信", "☔"); } else showMessage("鞋柜里塞着一张空白便签。靠近时能闻到淡淡的颜料味。", "鞋柜", "👟"); break;
+        case "hall-window": showMessage("你看见楼下有人撑着伞。她抬头，像是正好知道你会站在这里。下一秒，走廊的灯闪了一下。", "走廊窗户", "☔"); break;
+        case "teacher": openTeacherDialogue(); break;
+        default: showToast("这里暂时没有可调查的内容。");
+      }
+      renderAll(); saveGame(true);
+    }
+    function markShelf(id, fragment) {
+      if (!state.bookMarks.includes(id)) state.bookMarks.push(id); checkAchievements();
+      if (state.day >= 2) collectFragment(fragment);
+      showMessage(id === "shelf-b" ? "一本《海边的四月》被抽出半寸，书脊后藏着信纸边角。" : id === "shelf-c" ? "最里面的书架有新鲜的灰尘痕迹，像有人刚刚取走过什么。" : "靠门的书架上夹着借阅卡，最后一位读者的字迹很熟。", "书架调查", "📚");
+    }
+    function openCharacterDialogue(id) {
+      const c = GAME_DATA.characters[id]; const day = state.day;
+      const lines = {
+        sunian: day === 1 ? "你真的要去天台？那里风很大。……我只是随口问问，别误会。" : day === 2 ? "碎片？我、我当然不知道啦！不过如果你要去广播室，午休时门不会锁。" : day === 3 ? "今天的歌是我选的。你听到最后一句了吗？如果没听清，就回头再听一次。" : "文化祭结束后，你还会留在樱丘吗？",
+        lin: day <= 2 ? "这本诗集里有一句话：‘被看见之前，花也会先开很久。’你喜欢樱花吗？" : day === 3 ? "我下午确实有学生会会议。记录不会骗人，但记录也不会写下所有事情。" : "雨天很适合把真话藏在伞下。你明天会去樱花树下吗？",
+        xia: day <= 2 ? "这幅画还没有画完。你觉得树下应该站几个人？不用急着回答。" : day === 3 ? "颜料沾在指尖上，很难洗掉。就像有些目光，一旦落在身上就不会消失。" : "你看出来了。那杯奶茶不属于画面，因为它只属于你知道的那段记忆。"
+      }[id];
+      modalContext = { type: "dialogue", id };
+      openModal(`<div class="dialogue-header" style="color:${c.color}"><div class="dialogue-avatar">${c.emoji}</div><div><strong style="color:${c.color}">${c.name}</strong><small>${c.role}</small></div></div><div class="dialogue-line">${escapeHtml(lines)}</div><p>你想怎样回应？不同的选择，会改变她看向你的方式。</p><div class="choice-list"><button class="choice-btn" data-modal-action="dialogue-choice" data-char="${id}" data-choice="gentle">认真听她说下去</button><button class="choice-btn" data-modal-action="dialogue-choice" data-char="${id}" data-choice="question">把信的事告诉她一点点</button><button class="choice-btn" data-modal-action="dialogue-choice" data-char="${id}" data-choice="tease">笑着说：你是不是知道些什么？</button></div>`, { close: true });
+    }
+    function dialogueChoice(id, choice) {
+      closeModal(); state.interactions[id] += 1; state.affinity[id] += choice === "gentle" ? 2 : choice === "question" ? 1 : 3; tick(6);
+      const names = { sunian: "苏念", lin: "林知予", xia: "夏晚晴" }; const replies = {
+        gentle: "她没有立刻回答，只把视线放到窗外。你们之间的沉默，第一次不再尴尬。",
+        question: "她愣了半秒，像在斟酌能告诉你的部分，最后只说：‘那你继续找下去吧。’",
+        tease: "她的耳尖一下子红了。‘才、才没有！’但她没有否认自己看过那封信。"
+      };
+      setStory(`${names[id]}的回应`, replies[choice], `${names[id]} · 关系 +${choice === "tease" ? 3 : choice === "gentle" ? 2 : 1}`); logEvent(`和${names[id]}聊了一会儿`); renderAll(); saveGame(true);
+    }
+    function openTeacherDialogue() {
+      modalContext = { type: "teacher" };
+      openModal(`<div class="dialogue-header" style="color:${GAME_DATA.characters.teacher.color}"><div class="dialogue-avatar">☕</div><div><strong style="color:${GAME_DATA.characters.teacher.color}">方老师</strong><small>班主任 · 看起来什么都知道</small></div></div><div class="dialogue-line">“转学生，文化祭前最容易迷路。要是去天台，记得先找一把能抵住风的钥匙。”</div><p>她说得像一句普通的提醒，却把‘钥匙’两个字说得格外清楚。</p><div class="modal-actions"><button class="primary-btn" data-modal-action="teacher-key">记下钥匙线索</button><button class="secondary-btn" data-modal-action="close">先不追问</button></div>`, { close: true });
+    }
+    function openPianoMiniPuzzle() {
+      modalContext = { type: "piano", sequence: "531" };
+      openModal(`<div class="modal-kicker">附加小谜题 · 音乐教室</div><h2>钢琴上的三音符</h2><p>点歌单背面画着三个音符。按照高低顺序按下琴键，或许能听见一个单词。</p><div class="choice-list" style="grid-template-columns:repeat(5,1fr);display:grid"><button class="choice-btn" data-modal-action="piano-key" data-key="1">1<br>Do</button><button class="choice-btn" data-modal-action="piano-key" data-key="2">2<br>Re</button><button class="choice-btn" data-modal-action="piano-key" data-key="3">3<br>Mi</button><button class="choice-btn" data-modal-action="piano-key" data-key="4">4<br>Fa</button><button class="choice-btn" data-modal-action="piano-key" data-key="5">5<br>Sol</button></div><div class="modal-note" id="piano-sequence">已按：——</div><div class="modal-actions"><button class="secondary-btn" data-modal-action="close">离开钢琴</button></div>`, { close: true });
+    }
+    function openAcrosticPuzzle() {
+      modalContext = { type: "acrostic" };
+      const poem = ["天边樱影落窗前", "台阶尽头风正轻", "见字如晤勿迟疑", "你若愿来，我等你"]; openModal(`<div class="modal-kicker">Day 1 · 文字密码</div><h2>藏头诗 · 第一封信</h2><p>四行诗的句尾都在说风景，真正的方向藏在每行最前面。点击“分析藏头”把它找出来。</p><div class="poem">${poem.map(line => `<span class="poem-line"><span class="initial">${line[0]}</span>${escapeHtml(line.slice(1))}</span>`).join("")}</div><div class="answer-reveal" id="acrostic-answer">尚未分析</div><div class="modal-actions"><button class="primary-btn" data-modal-action="analyze-acrostic">🔍 分析藏头</button><button class="secondary-btn hidden" id="acrostic-solve" data-modal-action="solve-acrostic">记录线索并前往下一天</button></div>`, { close: false });
+    }
+    function openFragmentPuzzle() {
+      if (state.fragments.length < 5) { showMessage(`还差 ${5 - state.fragments.length} 片碎信。去教室、樱花道、图书馆、走廊和天台看看，也可以和她们聊聊。`, "碎信还没有齐", "🧩"); return; }
+      modalContext = { type: "fragments" };
+      const pieces = Object.entries(GAME_DATA.fragments).map(([id, f], index) => `<div class="fragment-piece" style="--tilt:${index % 2 ? "1.5deg" : "-1deg"}"><b>${f.name}</b><span>${escapeHtml(f.text)}</span></div>`).join(""); openModal(`<div class="modal-kicker">Day 2 · 物品拼凑</div><h2>碎信 · 拼合</h2><p>纸张边缘咬合在一起。缺少的不是内容，而是你愿意把它们放在一起的那一刻。</p><div class="fragment-grid">${pieces}</div><div class="modal-note">“第一次见到你那天，风把一朵樱花吹进了空教室。你低头捡起它，像捡起一段不愿惊动别人的心事。”</div><div class="modal-actions"><button class="primary-btn" data-modal-action="solve-fragments">🧩 拼合完成</button></div>`, { close: true });
+    }
+    function openLogicPuzzle() {
+      modalContext = { type: "logic" };
+      openModal(`<div class="modal-kicker">Day 3 · 逻辑推理</div><h2>不在场证明</h2><p>信中说：“昨天放学后我在老地方等你，但你没来。”根据时间线，先排除最不可能是写信人的人。</p><div class="timeline"><div class="timeline-card" style="--accent:#e79c61"><strong>苏念</strong><p>16:10 在广播站整理点歌单。16:35 离开，之后没有登记。</p></div><div class="timeline-card" style="--accent:#7ea8c5"><strong>林知予</strong><p>16:00—17:00 学生会会议，签到表和广播通知都能对上。</p></div><div class="timeline-card" style="--accent:#7eb59b"><strong>夏晚晴</strong><p>16:20 在天台画画。颜料痕迹从画架一直到围栏。</p></div></div><div class="modal-note">提示：排除一个人，不等于立刻确定另一个人。有人在记录之外留下了痕迹。</div><h3>你要先排除谁？</h3><div class="choice-list"><button class="choice-btn" data-modal-action="logic-choice" data-choice="sunian">排除苏念</button><button class="choice-btn" data-modal-action="logic-choice" data-choice="lin">排除林知予</button><button class="choice-btn" data-modal-action="logic-choice" data-choice="xia">排除夏晚晴</button></div><div class="logic-feedback" id="logic-feedback"></div>`, { close: true });
+    }
+    function openVisualPuzzle() {
+      modalContext = { type: "visual" };
+      openModal(`<div class="modal-kicker">Day 4 · 图形 / 视觉</div><h2>画中之谜</h2><p>夏晚晴的画里有樱花树、长椅、一本书、一杯奶茶。点击你认为“不属于这个场景”的物品。</p><div class="painting"><div class="paint-horizon"></div><div class="paint-book"></div><div class="paint-cup"></div><div class="paint-silhouette" id="paint-silhouette"></div><button class="paint-hotspot" style="left:31%;top:33%" data-modal-action="visual-choice" data-choice="tree">樱花树</button><button class="paint-hotspot" style="left:45%;top:76%" data-modal-action="visual-choice" data-choice="bench">长椅</button><button class="paint-hotspot" style="left:72%;top:69%" data-modal-action="visual-choice" data-choice="book">书</button><button class="paint-hotspot" style="left:87%;top:74%" data-modal-action="visual-choice" data-choice="milk">奶茶杯</button></div><div class="logic-feedback" id="visual-feedback"></div>`, { close: true, wide: true });
+    }
+    function openFinalPuzzle() {
+      if (state.day < 5) { showToast("最后的密码要等到文化祭当天。"); return; }
+      modalContext = { type: "final" };
+      const clueIds = ["acrostic", "fragments", "schedule", "painting", "rain"]; const clues = clueIds.filter(id => state.clues.includes(id));
+      openModal(`<div class="modal-kicker">Day 5 · 综合推理</div><h2>最后的密码</h2><p>前四天的线索汇成一条很长的路。樱花树下的人不需要你猜名字，只需要你把那句迟到了很久的话说出来。</p><div class="final-clues">${(clues.length ? clues : ["acrostic"]).map(id => `<div class="final-clue"><span>✦</span><span>${escapeHtml(GAME_DATA.clues[id] || id)}</span></div>`).join("")}</div><div class="password-row"><input id="password-input" class="password-input" placeholder="输入最后的短句" autocomplete="off"><button class="primary-btn" data-modal-action="submit-final">🌸 说出口</button></div><div class="modal-note" style="margin-top:12px">小提示：它不是“天台见你”，而是一句你也许早就知道的告白。</div>`, { close: true });
+    }
+    function finalPasswordCorrect(input) { const normalized = String(input).replace(/[\s，。！？!?,.]/g, ""); return ["我喜欢你很久了", "喜欢你很久了", "我喜欢你很久"].includes(normalized); }
+    function finishGame(input) {
+      if (!finalPasswordCorrect(input)) { const node = el("password-input"); node.classList.remove("shake"); void node.offsetWidth; node.classList.add("shake"); shakeScreen(); AudioEngine.error(); showToast("字迹轻轻摇晃了一下，也许还差一句话。"); return; }
+      state.flags.finalCorrect = true; state.flags.finished = true; const allPuzzles = [1,2,3,4].every(isPuzzleSolved) && state.fragments.length === 5;
+      let ending = "normal"; if (state.flags.logicWrongAll && state.flags.oldPhoto) ending = "easter"; else if (allPuzzles) ending = "true"; state.flags.ending = ending; logEvent("在樱花树下说出了最后的密码"); saveGame(true); closeModal(); renderEnding(ending); renderAll();
+    }
+    function renderEnding(kind) {
+      const writerId = ["sunian", "lin", "xia"].sort((a,b) => state.affinity[b] - state.affinity[a])[0]; const writer = GAME_DATA.characters[writerId];
+      const content = kind === "easter" ? { symbol: "🔮", title: "第三个人的秘密", text: "你在樱花树下没有立刻看见写信人。方老师却从树后走出来，手里拿着那张旧照片。她笑着说：“年轻真好啊。其实每一封信，都有人在旁边帮忙。” 原来她也经历过一段没有寄出的故事。", score: "洞察一切 · 彩蛋结局" } : kind === "true" ? { symbol: "🌸", title: "樱花之约", text: `${writer.name}站在树下，对你露出有些慌张、却终于没有移开的笑。她把最后一封信递给你：“其实从你转学第一天起，我就喜欢你很久了。” 海风穿过花瓣，也穿过你们之间最后一点距离。`, score: `心有灵犀 · ${writer.name}线` } : { symbol: "🍃", title: "未寄出的信", text: "你来到樱花树下，却只看见长椅上放着最后一封信：‘谢谢你愿意来找我。也许下次，我会更有勇气。’ 风把信纸翻到背面，那里画着一朵还没有完成的花。", score: "擦肩而过 · 普通结局" };
+      modalContext = { type: "ending" };
+      openModal(`<div class="ending-panel"><div class="ending-symbol">${content.symbol}</div><div class="modal-kicker">DAY 5 · 结局揭晓</div><h2>${content.title}</h2><p class="ending-text">${content.text}</p><div class="ending-score">${content.score}</div><div class="modal-actions" style="justify-content:center"><button class="primary-btn" data-modal-action="journal">📖 查看完整笔记</button><button class="secondary-btn" data-modal-action="restart">↻ 再读一次</button></div></div>`, { close: false });
+    }
+    function showMessage(text, title = "调查", icon = "✦") { modalContext = { type: "message" }; openModal(`<div class="modal-kicker">${icon} 调查记录</div><h2>${escapeHtml(title)}</h2><p>${escapeHtml(text)}</p><div class="modal-actions"><button class="primary-btn" data-modal-action="close">记下了</button></div>`, { close: true }); }
+    function showJournal() {
+      const clues = state.clues.length ? state.clues.map(id => `<div class="journal-entry"><time>线索</time>${escapeHtml(GAME_DATA.clues[id] || id)}</div>`).join("") : `<div class="clue-empty">笔记本还是空白的。</div>`;
+      const events = state.eventLog.length ? state.eventLog.slice(0, 10).map(e => `<div class="journal-entry"><time>Day ${e.day} ${escapeHtml(e.time)}</time>${escapeHtml(e.text)}</div>`).join("") : `<div class="clue-empty">还没有调查记录。</div>`;
+      const items = state.inventory.length ? state.inventory.map(id => `<div class="journal-entry">${GAME_DATA.items[id].emoji} <b>${escapeHtml(GAME_DATA.items[id].name)}</b>：${escapeHtml(GAME_DATA.items[id].detail)}</div>`).join("") : `<div class="clue-empty">还没有道具。</div>`;
+      modalContext = { type: "journal" }; openModal(`<div class="modal-kicker">手账式调查记录 · 自动保存</div><h2>你的笔记本</h2><div class="modal-note">“${escapeHtml(chapter().quote)}”</div><div class="journal-section"><h3>已记下的线索</h3><div class="journal-list">${clues}</div></div><div class="journal-section"><h3>物品备注</h3><div class="journal-list">${items}</div></div><div class="journal-section"><h3>最近发生的事</h3><div class="journal-list">${events}</div></div><div class="modal-actions"><button class="secondary-btn" data-modal-action="close">合上笔记本</button></div>`, { close: true, wide: true, paper: true });
+    }
+    function showHint() {
+      const key = String(state.day); const used = Math.min(3, state.hintUses[key] || 0); const hints = GAME_DATA.hints[key] || []; const text = hints[Math.max(0, used - 1)] || hints[0];
+      modalContext = { type: "hint" }; openModal(`<div class="modal-kicker">回忆提示 · 第 ${state.day} 天</div><h2>让记忆再清楚一点</h2><p>${escapeHtml(text)}</p><div class="modal-note">已使用 ${used} / 3 次提示。提示会保存在存档中。</div><div class="modal-actions">${used < 3 ? `<button class="primary-btn" data-modal-action="more-hint">🌸 再想清楚一点</button>` : ""}<button class="secondary-btn" data-modal-action="close">我知道了</button></div>`, { close: true });
+    }
+    function showSettings() {
+      const saved = readSaved(); modalContext = { type: "settings" }; openModal(`<div class="modal-kicker">游戏设置</div><h2>把这段故事收好</h2><p>单文件游戏会把进度保存在当前浏览器的 localStorage 中，不需要联网。</p><div class="modal-actions"><button class="primary-btn" data-modal-action="save">💾 立即保存</button><button class="secondary-btn" data-modal-action="load">↩ 读取最近存档</button><button class="secondary-btn" data-modal-action="night">🌙 推进到 22:10（解锁夜猫子）</button></div><div class="modal-divider"></div><div class="modal-note">${saved?.savedAt ? `最近存档：${escapeHtml(saved.savedAt)}` : "当前还没有存档。"}<br>重置会清除本浏览器里的这份游戏进度。</div><div class="modal-actions"><button class="danger-btn" data-modal-action="reset-confirm">清除并重新开始</button><button class="secondary-btn" data-modal-action="close">返回游戏</button></div>`, { close: true });
+    }
+
+    function openModal(html, options = {}) {
+      const panelClass = ["modal-panel", options.wide ? "wide" : "", options.paper ? "paper" : "", options.dark ? "dark-paper" : "", modalContext?.type === "start" ? "start-modal" : "", modalContext?.type === "ending" ? "ending-panel" : ""].filter(Boolean).join(" ");
+      el("modal-root").innerHTML = `<div class="modal-backdrop" data-backdrop="true"><div class="${panelClass}">${options.close !== false ? `<button class="modal-close" aria-label="关闭" data-modal-action="close">×</button>` : ""}${html}</div></div>`;
+    }
+    function closeModal() { el("modal-root").innerHTML = ""; modalContext = null; }
+    function handleModalAction(action, button) {
+      switch (action) {
+        case "new-game":
+          state = clone(DEFAULT_STATE); state.started = true; state.scene = "classroom"; currentStory = { kicker: "四月 · 早晨 08:10", title: "抽屉里的淡粉色信封", text: "你在课桌抽屉里发现一封没有署名的信。信纸角落，画着一朵小小的樱花。" }; closeModal(); renderAll(); showChapter(1); AudioEngine.startAmbient(); saveGame(true); break;
+        case "how-to": showHowTo(); break;
+        case "close": closeModal(); break;
+        case "analyze-acrostic":
+          document.querySelectorAll(".poem .initial").forEach(n => n.classList.add("highlight")); el("acrostic-answer").textContent = "天 · 台 · 见 · 你  →  天台见你"; el("acrostic-solve").classList.remove("hidden"); button.textContent = "✓ 已分析"; button.disabled = true; state.flags.acrosticAnalyzed = true; AudioEngine.success(); break;
+        case "solve-acrostic": if (state.flags.acrosticAnalyzed) completePuzzle(1, "acrostic", "天台的风", "你顺着藏头诗来到天台。远处的海面闪着光，围栏上却没有人，只有一小片绿色颜料。",); break;
+        case "solve-fragments": completePuzzle(2, "fragments", "第一次见到你那天", "碎信的最后一句没有署名：‘写信人，留在你身后的那个人。’你忽然意识到，她们每个人都可能在你身后停留过。",); break;
+        case "logic-choice": handleLogicChoice(button.dataset.choice); break;
+        case "solve-logic": completePuzzle(3, "schedule", "广播里的声音", "你排除了林知予，却没有急着做出最终判断。此时广播站传来一首歌，歌词的最后一句像在说：别只看记录。",); break;
+        case "visual-choice": handleVisualChoice(button.dataset.choice); break;
+        case "solve-visual": completePuzzle(4, "painting", "画面补全了", "你点击奶茶杯，画布像被风吹过一样缓缓补全。樱花树下出现两个人的剪影，其中一个人把手藏在身后。",); break;
+        case "dialogue-choice": dialogueChoice(button.dataset.char, button.dataset.choice); break;
+        case "teacher-key": state.flags.keyClue = true; addItem("keyClue"); closeModal(); setStory("方老师的提醒", "钥匙线索被你记在笔记本角落。下一阵风，也许会把天台门打开。", "走廊 · 方老师"); renderAll(); break;
+        case "piano-key": handlePianoKey(button.dataset.key); break;
+        case "submit-final": finishGame(el("password-input")?.value || ""); break;
+        case "journal": showJournal(); break;
+        case "more-hint": state.hintUses[String(state.day)] = Math.min(3, (state.hintUses[String(state.day)] || 0) + 1); showHint(); break;
+        case "save": saveGame(); closeModal(); break;
+        case "load": loadGame(); break;
+        case "night": state.hour = 22; state.minute = 10; state.flags.nightOwl = true; checkAchievements(); saveGame(true); closeModal(); renderAll(); showToast("时间来到 22:10 · 夜猫子成就已记录"); break;
+        case "reset-confirm": openModal(`<div class="modal-kicker">确认操作</div><h2>真的要重新开始吗？</h2><p>当前浏览器保存的游戏进度会被清除。已经解锁的结局也会从本机记录中消失。</p><div class="modal-actions"><button class="danger-btn" data-modal-action="reset">清除进度</button><button class="secondary-btn" data-modal-action="close">先保留</button></div>`, { close: true }); break;
+        case "reset": resetGame(); break;
+        case "restart": resetGame(); break;
+      }
+    }
+    function handleLogicChoice(choice) {
+      const feedback = el("logic-feedback");
+      if (choice === "lin") {
+        if (state.logicWrongSet.length >= 2) state.flags.logicWrongAll = true;
+        feedback.textContent = "林知予的时间线最完整，她暂时被排除。你还不能因此确定写信人。"; AudioEngine.success(); setTimeout(() => completePuzzle(3, "schedule", "广播里的声音", "你排除了林知予，却没有急着做出最终判断。此时广播站传来一首歌，歌词的最后一句像在说：别只看记录。"), 420); return;
+      }
+      if (!state.logicWrongSet.includes(choice)) state.logicWrongSet.push(choice); state.wrongLogic += 1; if (state.logicWrongSet.includes("sunian") && state.logicWrongSet.includes("xia")) state.flags.logicWrongAll = true;
+      feedback.textContent = "也许再想想？有些人比你想象的更在意你。"; shakeScreen(); AudioEngine.error();
+    }
+    function handleVisualChoice(choice) {
+      const feedback = el("visual-feedback");
+      if (choice === "milk") { el("paint-silhouette").classList.add("show"); feedback.textContent = "奶茶杯上的字只有你认识。画里的秘密被你看见了。"; AudioEngine.success(); sparkle(); setTimeout(() => completePuzzle(4, "painting", "画面补全了", "你点击奶茶杯，画布像被风吹过一样缓缓补全。樱花树下出现两个人的剪影，其中一个人把手藏在身后。"), 700); }
+      else { feedback.textContent = "这个物品本来就属于樱花树下。再看看有没有只有你会在意的细节。"; shakeScreen(); AudioEngine.error(); }
+    }
+    function handlePianoKey(key) {
+      const current = (modalContext.sequencePressed || "") + key; modalContext.sequencePressed = current; const n = el("piano-sequence"); n.textContent = `已按：${current.split("").join(" · ")}`; AudioEngine.note([261.6,293.7,329.6,349.2,392][Number(key)-1]);
+      if (current.length >= 3) { if (current === modalContext.sequence) { addClue("broadcast"); addItem("songSheet"); n.textContent = "旋律落下：回头。你在琴盖内侧找到一行小字。"; setTimeout(closeModal, 750); } else { modalContext.sequencePressed = ""; n.textContent = "音符没有对上，已重新开始。"; shakeScreen(); } }
+    }
+    function loadGame() {
+      const raw = readSaved(); if (!raw) { showToast("没有找到可读取的存档"); return; }
+      state = mergeState(raw); state.started = true; closeModal(); renderAll(); setStory("读档完成", `你回到了 Day ${state.day}「${chapter().title}」。笔记本里的字迹没有消失。`, "存档读取"); showToast("已读取最近存档");
+    }
+    function showStartScreen() {
+      const saved = readSaved(); modalContext = { type: "start" }; openModal(`<div class="start-panel"><div class="start-mark">🌸</div><div class="modal-kicker">纯 HTML · CSS · JavaScript · 零外部依赖</div><h2>樱花之约</h2><p>四月，沿海城市的女子高中樱丘学园。你在抽屉里收到一封没有署名的信，而写信人说——如果你愿意找到我，就来解开我留下的痕迹吧。</p><div class="modal-actions"><button class="primary-btn" data-modal-action="new-game">✦ 开始新的故事</button>${saved ? `<button class="secondary-btn" data-modal-action="load">↩ 继续上次进度</button>` : ""}<button class="secondary-btn" data-modal-action="how-to">？ 怎么玩</button></div><small>点击场景中的 ✦ 调查 · H / 右下角 🌸 查看提示 · J 打开笔记</small></div>`, { close: false });
+    }
+    function showHowTo() {
+      openModal(`<div class="modal-kicker">三十秒读懂玩法</div><h2>这是一场五天的寻找</h2><p>每天会有一个核心谜题。你可以自由调查校园、和三位角色聊天、收集碎片与隐藏道具。重要线索会自动写入笔记本。</p><div class="modal-note">① 点击校园地图切换场景<br>② 点击场景里的发光区域调查<br>③ 卡住时用 🌸 回忆提示<br>④ 关系值会影响真结局里的写信人</div><div class="modal-actions"><button class="primary-btn" data-modal-action="new-game">我明白了，开始</button></div>`, { close: false });
+    }
+
+    /* =========================
+       音频层：只使用 Web Audio API 合成轻量提示音，不请求外部文件。
+       ========================= */
+    const AudioEngine = {
+      ctx: null, enabled: true, ambient: null,
+      ensure() { if (!this.enabled) return; if (!this.ctx) { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { this.enabled = false; } } if (this.ctx?.state === "suspended") this.ctx.resume(); },
+      tone(freq, duration = .11, type = "sine", gain = .035, delay = 0) { if (!this.enabled) return; this.ensure(); if (!this.ctx) return; const o = this.ctx.createOscillator(), g = this.ctx.createGain(); o.type = type; o.frequency.value = freq; g.gain.setValueAtTime(0.0001, this.ctx.currentTime + delay); g.gain.exponentialRampToValueAtTime(gain, this.ctx.currentTime + delay + .018); g.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + delay + duration); o.connect(g).connect(this.ctx.destination); o.start(this.ctx.currentTime + delay); o.stop(this.ctx.currentTime + delay + duration + .04); },
+      note(freq) { this.tone(freq, .16, "triangle", .045); },
+      click() { this.tone(640, .055, "sine", .018); },
+      success() { [523.3,659.3,783.9].forEach((f,i) => this.tone(f, .22, "sine", .035, i*.07)); },
+      error() { this.tone(155, .18, "sawtooth", .022); this.tone(120, .23, "sine", .018, .08); },
+      startAmbient() { if (this.ambient || !this.enabled) return; this.ambient = setInterval(() => { if (this.enabled && this.ctx) { const base = state.scene === "library" ? 261.6 : state.scene === "rooftop" || state.scene === "sakura" ? 329.6 : 293.7; this.tone(base, .62, "sine", .008); } }, 4800); },
+      toggle() { this.enabled = !this.enabled; if (!this.enabled && this.ambient) { clearInterval(this.ambient); this.ambient = null; } else if (this.enabled) { this.ensure(); this.startAmbient(); } renderAll(); showToast(this.enabled ? "音效已开启" : "音效已关闭"); }
+    };
+
+    function initPetals() { const root = el("petals"); for (let i = 0; i < 28; i++) { const p = document.createElement("span"); p.className = "petal"; p.style.left = `${Math.random()*100}%`; p.style.setProperty("--fall", `${7 + Math.random()*10}s`); p.style.setProperty("--delay", `${-Math.random()*13}s`); p.style.setProperty("--rotate", `${Math.random()*180}deg`); root.appendChild(p); } }
+
+    // 事件委托：同一份逻辑同时支持鼠标、触屏与键盘操作。
+    document.addEventListener("click", event => {
+      const button = event.target.closest("button"); if (button && !button.disabled) AudioEngine.ensure();
+      const hotspot = event.target.closest(".hotspot"); if (hotspot) { handleAction(hotspot.dataset.action, hotspot.dataset.id); return; }
+      const nav = event.target.closest("[data-scene]"); if (nav) { navigateScene(nav.dataset.scene); return; }
+      const character = event.target.closest("[data-character]"); if (character) { openCharacterDialogue(character.dataset.character); return; }
+      const item = event.target.closest("[data-item]"); if (item) { const data = GAME_DATA.items[item.dataset.item]; showMessage(data.detail, data.name, data.emoji); return; }
+      const modalButton = event.target.closest("[data-modal-action]"); if (modalButton) { handleModalAction(modalButton.dataset.modalAction, modalButton); return; }
+      if (event.target.classList.contains("modal-backdrop") && event.target.dataset.backdrop === "true") closeModal();
+    });
+    el("case-btn").addEventListener("click", () => { AudioEngine.ensure(); if (state.day === 1 && !isPuzzleSolved(1)) openAcrosticPuzzle(); else if (state.day === 2 && !isPuzzleSolved(2)) openFragmentPuzzle(); else if (state.day === 3 && !isPuzzleSolved(3)) openLogicPuzzle(); else if (state.day === 4 && !isPuzzleSolved(4)) openVisualPuzzle(); else if (state.day === 5 && !state.flags.finished) openFinalPuzzle(); else showMessage("今天的核心谜题已经解开。去校园里继续调查，也许还有隐藏成就等着你。", "案件进度", "✦"); });
+    el("story-btn").addEventListener("click", () => { addClue(state.day === 1 ? "acrostic" : state.day === 2 ? "fragments" : state.day === 3 ? "schedule" : state.day === 4 ? "rain" : "painting"); showToast("这句话被你记进了笔记本"); });
+    el("journal-btn").addEventListener("click", showJournal); el("save-btn").addEventListener("click", () => saveGame()); el("load-btn").addEventListener("click", loadGame); el("sound-btn").addEventListener("click", () => AudioEngine.toggle()); el("settings-btn").addEventListener("click", showSettings); el("memory-btn").addEventListener("click", showHint);
+    document.addEventListener("keydown", event => { if (event.key === "Escape") closeModal(); if (event.key.toLowerCase() === "j") showJournal(); if (event.key.toLowerCase() === "h") showHint(); if (event.key.toLowerCase() === "s" && !event.ctrlKey) saveGame(); });
+
+    initPetals(); renderAll(); showStartScreen();
+  </script>
+</body>
+</html>

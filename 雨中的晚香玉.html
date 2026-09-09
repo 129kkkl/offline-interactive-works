@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="百合向视觉小说《雨中的晚香玉》">
+  <title>雨中的晚香玉｜百合向 Galgame</title>
+  <style>
+    /*
+      《雨中的晚香玉》单文件视觉小说
+      所有样式、剧本与交互逻辑均内嵌于本页；保存后可直接双击打开。
+    */
+    :root {
+      --ink: #3e4050;
+      --muted: #747583;
+      --cream: #f5f0e9;
+      --glass: rgba(248, 244, 238, 0.72);
+      --glass-strong: rgba(255, 252, 248, 0.84);
+      --lily: #c991a2;
+      --lily-deep: #a86d81;
+      --mist: #8994aa;
+      --line: rgba(82, 83, 99, 0.18);
+      --shadow: 0 24px 70px rgba(42, 47, 62, 0.22);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    body {
+      color: var(--ink);
+      font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", serif;
+      background:
+        radial-gradient(circle at 76% 13%, rgba(255, 218, 208, 0.25), transparent 27%),
+        linear-gradient(145deg, #657083 0%, #9a9cab 45%, #d2b4b5 100%);
+      transition: background 1.2s ease;
+    }
+
+    body[data-ending="true"] {
+      background:
+        radial-gradient(circle at 75% 15%, rgba(255, 239, 220, 0.74), transparent 29%),
+        linear-gradient(145deg, #b77d8f 0%, #e2a6ad 48%, #f6d4c8 100%);
+    }
+
+    body[data-ending="regret"] {
+      background:
+        radial-gradient(circle at 72% 15%, rgba(224, 231, 239, 0.18), transparent 28%),
+        linear-gradient(145deg, #4c5362 0%, #7f8792 52%, #afb5bd 100%);
+    }
+
+    body[data-ending="hidden"] {
+      background:
+        radial-gradient(circle at 75% 16%, rgba(255, 244, 190, 0.52), transparent 28%),
+        linear-gradient(145deg, #9f8669 0%, #d6b57e 49%, #f3dfa5 100%);
+    }
+
+    button {
+      font: inherit;
+    }
+
+    #game {
+      position: relative;
+      width: 100vw;
+      min-height: 100vh;
+      isolation: isolate;
+    }
+
+    /* 动态雨丝：由 JavaScript 在 #rain-layer 中生成。 */
+    #rain-layer,
+    #rain-layer::before,
+    #rain-layer::after {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    #rain-layer {
+      z-index: -3;
+    }
+
+    #rain-layer::before {
+      content: "";
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.19) 0 1px, transparent 1px 100%);
+      background-size: 12px 12px;
+      opacity: 0.18;
+      transform: skewX(-14deg);
+    }
+
+    .rain-drop {
+      position: absolute;
+      top: -24vh;
+      width: 1px;
+      height: var(--drop-height);
+      border-radius: 999px;
+      background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(238, 246, 255, 0.78));
+      animation: rain-fall var(--drop-duration) linear var(--drop-delay) infinite;
+      transform: rotate(11deg);
+      opacity: var(--drop-opacity);
+    }
+
+    @keyframes rain-fall {
+      from {
+        transform: translate3d(0, -15vh, 0) rotate(11deg);
+      }
+      to {
+        transform: translate3d(-18vw, 135vh, 0) rotate(11deg);
+      }
+    }
+
+    .atmosphere {
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .atmosphere::before {
+      content: "";
+      position: absolute;
+      left: -10vw;
+      right: -10vw;
+      bottom: -13vh;
+      height: 38vh;
+      border-radius: 50% 50% 0 0;
+      background:
+        radial-gradient(ellipse at 30% 15%, rgba(35, 44, 53, 0.34) 0 1%, transparent 1.2%),
+        radial-gradient(ellipse at 49% 4%, rgba(59, 69, 78, 0.36) 0 8%, transparent 8.3%),
+        linear-gradient(to top, rgba(42, 49, 59, 0.74), rgba(56, 62, 74, 0.22));
+      filter: blur(1px);
+    }
+
+    .atmosphere::after {
+      content: "✦  ·  ✦";
+      position: absolute;
+      top: 14%;
+      right: 9%;
+      letter-spacing: 1.6rem;
+      color: rgba(255, 244, 214, 0.48);
+      font-size: clamp(1rem, 2vw, 1.8rem);
+      text-shadow: 0 0 24px rgba(255, 235, 185, 0.8);
+    }
+
+    .topbar {
+      position: absolute;
+      top: clamp(18px, 4vw, 46px);
+      left: clamp(18px, 5vw, 74px);
+      right: clamp(18px, 5vw, 74px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      color: rgba(255, 255, 255, 0.86);
+      text-shadow: 0 1px 12px rgba(32, 38, 50, 0.42);
+    }
+
+    .game-title {
+      margin: 0;
+      font-size: clamp(1rem, 2.3vw, 1.36rem);
+      font-weight: 600;
+      letter-spacing: 0.18em;
+    }
+
+    .chapter-label {
+      max-width: 46vw;
+      overflow: hidden;
+      color: rgba(255, 255, 255, 0.72);
+      font-size: clamp(0.76rem, 1.55vw, 0.94rem);
+      letter-spacing: 0.1em;
+      text-align: right;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .stage {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      align-items: end;
+      grid-template-columns: minmax(150px, 0.8fr) minmax(220px, 1.55fr) minmax(150px, 0.8fr);
+      gap: clamp(8px, 2vw, 36px);
+      padding: clamp(70px, 10vh, 122px) clamp(16px, 5vw, 78px) clamp(210px, 26vh, 280px);
+      pointer-events: none;
+    }
+
+    .character {
+      position: relative;
+      display: grid;
+      justify-items: center;
+      align-content: end;
+      min-height: min(50vh, 480px);
+      opacity: 0.48;
+      transform: translateY(14px) scale(0.96);
+      filter: saturate(0.72) blur(0.2px);
+      transition: opacity 0.65s ease, transform 0.65s ease, filter 0.65s ease;
+    }
+
+    .character.active {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      filter: saturate(1.05);
+    }
+
+    .character.left {
+      grid-column: 1 / 2;
+    }
+
+    .character.right {
+      grid-column: 3 / 4;
+    }
+
+    .silhouette {
+      position: relative;
+      width: clamp(132px, 20vw, 258px);
+      height: clamp(260px, 40vw, 480px);
+      border-radius: 49% 49% 18% 18% / 34% 34% 10% 10%;
+      background:
+        radial-gradient(circle at 50% 17%, rgba(255, 255, 255, 0.98) 0 10%, transparent 10.5%),
+        radial-gradient(ellipse at 50% 41%, rgba(247, 240, 226, 0.98) 0 24%, transparent 24.5%),
+        linear-gradient(135deg, rgba(231, 224, 210, 0.96), rgba(187, 170, 151, 0.98));
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.32), 0 22px 42px rgba(40, 43, 53, 0.22);
+    }
+
+    .character.right .silhouette {
+      background:
+        radial-gradient(circle at 50% 17%, rgba(249, 224, 208, 0.96) 0 9.5%, transparent 10%),
+        radial-gradient(ellipse at 50% 42%, rgba(45, 47, 59, 0.98) 0 25%, transparent 25.5%),
+        linear-gradient(135deg, rgba(43, 46, 58, 0.97), rgba(86, 87, 97, 0.98));
+    }
+
+    .silhouette::before {
+      content: "";
+      position: absolute;
+      top: 10%;
+      left: 50%;
+      width: 43%;
+      height: 33%;
+      border-radius: 48% 48% 45% 45%;
+      background: rgba(246, 226, 216, 0.72);
+      transform: translateX(-50%);
+      box-shadow: 0 -10px 0 8px rgba(240, 239, 235, 0.9);
+    }
+
+    .character.right .silhouette::before {
+      box-shadow: 0 -26px 0 15px rgba(26, 30, 40, 0.96), 0 12px 0 13px rgba(26, 30, 40, 0.96);
+    }
+
+    .character-emoji {
+      position: absolute;
+      z-index: 1;
+      top: 8%;
+      left: 50%;
+      display: grid;
+      width: clamp(74px, 10vw, 108px);
+      aspect-ratio: 1;
+      place-items: center;
+      border: 2px solid rgba(255, 255, 255, 0.75);
+      border-radius: 50%;
+      background: rgba(248, 245, 239, 0.64);
+      box-shadow: 0 8px 24px rgba(42, 43, 52, 0.17);
+      font-family: "Segoe UI Emoji", "Apple Color Emoji", sans-serif;
+      font-size: clamp(2.25rem, 4vw, 4rem);
+      transform: translateX(-50%);
+    }
+
+    .character-name {
+      position: absolute;
+      z-index: 2;
+      bottom: 9%;
+      padding: 0.45rem 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 999px;
+      background: rgba(34, 38, 48, 0.42);
+      color: #fff;
+      font-size: clamp(0.78rem, 1.7vw, 1rem);
+      letter-spacing: 0.16em;
+      text-shadow: 0 1px 5px rgba(0, 0, 0, 0.25);
+      backdrop-filter: blur(9px);
+      -webkit-backdrop-filter: blur(9px);
+    }
+
+    .scene-note {
+      grid-column: 2 / 3;
+      align-self: center;
+      justify-self: center;
+      width: min(100%, 370px);
+      margin-top: 8vh;
+      padding: 1.15rem 1.35rem;
+      border: 1px solid rgba(255, 255, 255, 0.34);
+      border-radius: 20px;
+      background: rgba(33, 38, 50, 0.26);
+      color: rgba(255, 255, 255, 0.86);
+      font-size: clamp(0.78rem, 1.45vw, 0.96rem);
+      line-height: 1.85;
+      text-align: center;
+      text-shadow: 0 1px 8px rgba(30, 35, 44, 0.34);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .story-ui {
+      position: absolute;
+      right: 50%;
+      bottom: clamp(28px, 5.2vh, 62px);
+      z-index: 4;
+      width: min(860px, calc(100vw - 32px));
+      transform: translateX(50%);
+    }
+
+    .choices {
+      position: absolute;
+      right: 0;
+      bottom: calc(100% + 17px);
+      left: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
+    .choice-button {
+      width: min(100%, 690px);
+      padding: 0.92rem 1.25rem;
+      border: 1px solid rgba(255, 255, 255, 0.75);
+      border-radius: 15px;
+      outline: none;
+      background: rgba(250, 246, 240, 0.88);
+      color: #50505c;
+      box-shadow: 0 8px 24px rgba(31, 35, 47, 0.2);
+      cursor: pointer;
+      font-size: clamp(0.82rem, 1.66vw, 1rem);
+      line-height: 1.65;
+      text-align: left;
+      transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    .choice-button::before {
+      content: "◇";
+      margin-right: 0.55rem;
+      color: var(--lily-deep);
+    }
+
+    .choice-button:hover,
+    .choice-button:focus-visible {
+      transform: translateY(-5px);
+      border-color: rgba(255, 255, 255, 0.96);
+      background: rgba(226, 182, 190, 0.96);
+      color: #fff;
+      box-shadow: 0 16px 34px rgba(53, 40, 53, 0.26);
+    }
+
+    .choice-button:hover::before,
+    .choice-button:focus-visible::before {
+      color: #fff7e9;
+    }
+
+    .dialogue-box {
+      position: relative;
+      min-height: 160px;
+      padding: clamp(22px, 3vw, 35px) clamp(24px, 4.4vw, 54px) clamp(25px, 3vw, 35px);
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 25px;
+      background: var(--glass);
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      pointer-events: auto;
+      backdrop-filter: blur(20px) saturate(1.06);
+      -webkit-backdrop-filter: blur(20px) saturate(1.06);
+    }
+
+    .dialogue-box::after {
+      content: "";
+      position: absolute;
+      top: -80px;
+      right: -35px;
+      width: 250px;
+      height: 160px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.43), transparent 68%);
+      pointer-events: none;
+    }
+
+    .speaker-tag {
+      position: absolute;
+      top: 0;
+      left: 0;
+      min-width: 112px;
+      padding: 0.54rem 1.25rem 0.56rem;
+      border-radius: 0 0 18px 0;
+      background: rgba(176, 121, 139, 0.91);
+      color: white;
+      font-size: clamp(0.83rem, 1.8vw, 1rem);
+      letter-spacing: 0.15em;
+      text-align: center;
+      box-shadow: 4px 4px 14px rgba(105, 65, 80, 0.12);
+    }
+
+    .speaker-tag.narrator {
+      background: rgba(103, 113, 135, 0.88);
+    }
+
+    .dialogue-text {
+      min-height: 4.5em;
+      margin: 0;
+      padding-top: 0.4rem;
+      color: var(--ink);
+      font-size: clamp(1rem, 2.05vw, 1.25rem);
+      font-weight: 500;
+      line-height: 2.05;
+      letter-spacing: 0.045em;
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.54);
+    }
+
+    .advance-hint {
+      position: absolute;
+      right: 22px;
+      bottom: 13px;
+      color: rgba(84, 82, 93, 0.66);
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      animation: breathe 1.6s ease-in-out infinite;
+    }
+
+    @keyframes breathe {
+      0%,
+      100% {
+        opacity: 0.35;
+        transform: translateY(0);
+      }
+      50% {
+        opacity: 0.95;
+        transform: translateY(-2px);
+      }
+    }
+
+    .cg-card {
+      display: none;
+      margin: 0 0 15px;
+      padding: 1rem 1.2rem;
+      border: 1px solid rgba(255, 255, 255, 0.67);
+      border-radius: 16px;
+      background: rgba(255, 252, 246, 0.69);
+      box-shadow: 0 10px 25px rgba(41, 40, 46, 0.14);
+      color: #5d5258;
+      font-size: clamp(0.8rem, 1.55vw, 0.95rem);
+      line-height: 1.75;
+      text-align: center;
+      backdrop-filter: blur(13px);
+      -webkit-backdrop-filter: blur(13px);
+    }
+
+    .cg-card.visible {
+      display: block;
+      animation: card-in 0.5s ease both;
+    }
+
+    @keyframes card-in {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .restart-button {
+      display: none;
+      width: 100%;
+      margin-top: 13px;
+      padding: 0.78rem 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.76);
+      border-radius: 14px;
+      background: rgba(63, 66, 78, 0.78);
+      color: #fff;
+      cursor: pointer;
+      font-size: 0.9rem;
+      letter-spacing: 0.12em;
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+
+    .restart-button.visible {
+      display: block;
+    }
+
+    .restart-button:hover,
+    .restart-button:focus-visible {
+      background: rgba(168, 109, 129, 0.91);
+      transform: translateY(-3px);
+    }
+
+    .start-screen {
+      position: absolute;
+      z-index: 10;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 22px;
+      background:
+        radial-gradient(circle at 72% 22%, rgba(255, 228, 218, 0.22), transparent 23%),
+        linear-gradient(145deg, rgba(52, 61, 75, 0.3), rgba(53, 57, 70, 0.11));
+      transition: opacity 0.75s ease, visibility 0.75s ease;
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+    }
+
+    .start-screen.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .title-card {
+      width: min(560px, 100%);
+      padding: clamp(35px, 8vw, 70px) clamp(28px, 7vw, 66px);
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      border-radius: 30px;
+      background: rgba(250, 246, 240, 0.69);
+      box-shadow: 0 32px 75px rgba(25, 33, 46, 0.24);
+      text-align: center;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+
+    .title-card .flower {
+      display: inline-grid;
+      width: 72px;
+      height: 72px;
+      place-items: center;
+      border: 1px solid rgba(174, 111, 133, 0.27);
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.38);
+      color: #b16e85;
+      font-size: 2.5rem;
+    }
+
+    .title-card h1 {
+      margin: 1.1rem 0 0.64rem;
+      color: #55515e;
+      font-size: clamp(2rem, 6vw, 3.8rem);
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      text-indent: 0.16em;
+    }
+
+    .title-card p {
+      margin: 0 auto;
+      color: #71707a;
+      font-size: clamp(0.88rem, 1.75vw, 1rem);
+      line-height: 2;
+      letter-spacing: 0.08em;
+    }
+
+    .start-button {
+      margin-top: 1.8rem;
+      padding: 0.92rem 2.3rem;
+      border: 1px solid rgba(255, 255, 255, 0.85);
+      border-radius: 999px;
+      background: rgba(180, 111, 134, 0.9);
+      color: white;
+      box-shadow: 0 9px 23px rgba(126, 72, 91, 0.24);
+      cursor: pointer;
+      font-size: 1rem;
+      letter-spacing: 0.18em;
+      transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .start-button:hover,
+    .start-button:focus-visible {
+      background: #9f5d75;
+      box-shadow: 0 14px 28px rgba(107, 57, 77, 0.32);
+      transform: translateY(-4px);
+    }
+
+    .start-tip {
+      display: block;
+      margin-top: 1.2rem;
+      color: #8c8990;
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+    }
+
+    @media (max-width: 680px) {
+      .topbar {
+        top: 18px;
+      }
+
+      .stage {
+        grid-template-columns: minmax(88px, 0.7fr) 1fr minmax(88px, 0.7fr);
+        gap: 0;
+        padding: 78px 10px 244px;
+      }
+
+      .character {
+        min-height: 37vh;
+      }
+
+      .silhouette {
+        width: 108px;
+        height: 254px;
+      }
+
+      .character-emoji {
+        width: 63px;
+      }
+
+      .character-name {
+        bottom: 8%;
+        padding: 0.35rem 0.55rem;
+        letter-spacing: 0.08em;
+      }
+
+      .scene-note {
+        width: 165px;
+        margin-top: 16vh;
+        padding: 0.8rem;
+        font-size: 0.74rem;
+        line-height: 1.65;
+      }
+
+      .story-ui {
+        bottom: 20px;
+        width: calc(100vw - 22px);
+      }
+
+      .dialogue-box {
+        min-height: 166px;
+        border-radius: 20px;
+      }
+
+      .dialogue-text {
+        min-height: 5.1em;
+        padding-top: 0.7rem;
+        line-height: 1.9;
+      }
+
+      .choice-button {
+        padding: 0.72rem 0.9rem;
+        border-radius: 13px;
+        font-size: 0.78rem;
+        line-height: 1.5;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main id="game" aria-label="视觉小说：雨中的晚香玉">
+    <div id="rain-layer" aria-hidden="true"></div>
+    <div class="atmosphere" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <p class="game-title">雨中的晚香玉</p>
+      <div id="chapter-label" class="chapter-label">百合向视觉小说</div>
+    </header>
+
+    <section class="stage" aria-label="角色舞台">
+      <div id="lin-wan" class="character left" aria-label="林晚">
+        <div class="silhouette"></div>
+        <div class="character-emoji" aria-hidden="true">👩‍🦳</div>
+        <div class="character-name">林晚</div>
+      </div>
+
+      <div id="scene-note" class="scene-note">四月的黄昏，旧社团楼被细雨包围。<br>有一盏画室的灯，仍亮在三楼。</div>
+
+      <div id="gu-qingli" class="character right" aria-label="顾清璃">
+        <div class="silhouette"></div>
+        <div class="character-emoji" aria-hidden="true">👩</div>
+        <div class="character-name">顾清璃</div>
+      </div>
+    </section>
+
+    <section class="story-ui" aria-live="polite">
+      <div id="choices" class="choices" aria-label="剧情选择"></div>
+      <div id="cg-card" class="cg-card"></div>
+      <div id="dialogue-box" class="dialogue-box" role="button" tabindex="0" aria-label="点击或按空格推进文本">
+        <div id="speaker-tag" class="speaker-tag narrator">旁白</div>
+        <p id="dialogue-text" class="dialogue-text"></p>
+        <span id="advance-hint" class="advance-hint">点击或空格 · 加速 / 推进</span>
+      </div>
+      <button id="restart-button" class="restart-button" type="button">从雨声开始，再读一次</button>
+    </section>
+
+    <section id="start-screen" class="start-screen" aria-label="开始画面">
+      <div class="title-card">
+        <div class="flower" aria-hidden="true">⚜</div>
+        <h1>雨中的晚香玉</h1>
+        <p>一间画室、一册诗集，和两颗在雨声里<br>迟迟不敢说出口的心。</p>
+        <button id="start-button" class="start-button" type="button">开始阅读</button>
+        <span class="start-tip">点击对话框或按空格键，可加速文字并推进剧情</span>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    "use strict";
+
+    /*
+      ==================== 剧本数据区 ====================
+      每个节点均包含 id、speaker、text、options 四个核心字段。
+      options 的 next 指向下一个剧本节点；ending 用于切换三种结局的色调。
+      全部剧本文字均保存在这个 JSON 风格数组中，方便日后改写或扩充。
+    */
+    const scriptData = [
+      {
+        "id": "prologue_01",
+        "chapter": "序章・雨声",
+        "speaker": "旁白",
+        "text": "四月的旧社团楼在黄昏里显得格外安静。细雨把红砖墙洗成深色，雨水沿着爬满藤蔓的窗框一滴滴落下。林晚忘了带伞，只好抱紧怀里的诗集，躲进一楼门廊。",
+        "scene": "四月 · 旧社团楼 · 黄昏细雨",
+        "next": "prologue_02",
+        "options": []
+      },
+      {
+        "id": "prologue_02",
+        "chapter": "序章・雨声",
+        "speaker": "林晚",
+        "text": "“要是雨能快一点停就好了……”她把被雨气浸凉的指尖藏进米色针织衫的袖口，抬头时，却看见三楼尽头有一扇窗亮着暖黄的灯。",
+        "scene": "门廊下的林晚，望见三楼画室的暖灯。",
+        "next": "prologue_03",
+        "options": []
+      },
+      {
+        "id": "prologue_03",
+        "chapter": "序章・雨声",
+        "speaker": "旁白",
+        "text": "那不是文学系常来的地方。可那点灯光像一页被翻开的书，安静地邀请她靠近。林晚踩着潮湿的楼梯向上，鞋跟敲过空楼道，终于停在写着“绘画社”的门前。",
+        "scene": "潮湿的楼梯通向三楼，一点暖黄在门缝里轻轻摇晃。",
+        "next": "prologue_04",
+        "options": []
+      },
+      {
+        "id": "prologue_04",
+        "chapter": "序章・雨声",
+        "speaker": "旁白",
+        "text": "推门的瞬间，松节油和潮湿木头的气息扑面而来。顾清璃背对着门口，黑色长发垂至腰际，正对一幅半成品油画发呆。画中，银发少女的侧影立在雨中的樱花下，仿佛正把一句话咽回心里。",
+        "scene": "画室内，半成品油画映着雨中的樱花与银发侧影。",
+        "next": "prologue_05",
+        "options": []
+      },
+      {
+        "id": "prologue_05",
+        "chapter": "序章・雨声",
+        "speaker": "顾清璃",
+        "text": "她闻声回头，眉眼冷得像窗外的雨幕。“这里不是文学系的地盘。”声音并不高，却让林晚的呼吸一下乱了节拍。",
+        "scene": "顾清璃转身，暖灯把她的侧脸映得清冷。",
+        "next": "prologue_06",
+        "options": []
+      },
+      {
+        "id": "prologue_06",
+        "chapter": "序章・雨声",
+        "speaker": "林晚",
+        "text": "“对、对不起！我只是躲雨，马上就走。”她连忙低头，却在画板右下角看见一朵小小的晚香玉。那是她最喜欢的花，白色花瓣被画得很轻，像秘密落在湿润的空气里。",
+        "scene": "画板右下，一朵小小的晚香玉在颜料的余白中盛开。",
+        "next": "prologue_07",
+        "options": []
+      },
+      {
+        "id": "prologue_07",
+        "chapter": "序章・雨声",
+        "speaker": "顾清璃",
+        "text": "顾清璃顺着她的目光看过去，指尖不动声色地挡住画板一角。“雨一时不会停。”她停了停，语气仍淡，“站里面等。别碰东西。”",
+        "scene": "一场雨，把两个本不相熟的人留在同一盏灯下。",
+        "next": "prologue_08",
+        "options": []
+      },
+      {
+        "id": "prologue_08",
+        "chapter": "序章・雨声",
+        "speaker": "旁白",
+        "text": "林晚轻轻应了一声。她们隔着画架与雨声对视了很短的一瞬，短到谁也没有笑，长到林晚后来很多个夜晚都记得：那双在画布前温柔得不可思议的眼睛，原来曾这样看过自己。",
+        "scene": "初次对视，窗外雨丝无声地斜过玻璃。",
+        "next": "poetry_01",
+        "options": []
+      },
+      {
+        "id": "poetry_01",
+        "chapter": "第一幕・诗集",
+        "speaker": "旁白",
+        "text": "一周以后，雨停过又落。林晚还是会在放学时绕到旧社团楼，假装只是想看一眼窗内有没有亮灯。她把那天的画、那朵晚香玉，和顾清璃回头时微微收紧的手指，一遍遍放进心里琢磨。",
+        "scene": "一周后，樱花落在画室窗沿，林晚又来到旧楼。",
+        "next": "poetry_02",
+        "options": []
+      },
+      {
+        "id": "poetry_02",
+        "chapter": "第一幕・诗集",
+        "speaker": "林晚",
+        "text": "“只是还书……不，根本没有借书。”她站在窗下小声和自己争辩，最后还是鼓起勇气，把最爱的《二十首情诗与绝望的歌》放到画室窗台上，又压下一张写得歪歪斜斜的便签。",
+        "scene": "诗集安静躺在窗台上，便签被风吹得轻颤。",
+        "next": "poetry_03",
+        "options": []
+      },
+      {
+        "id": "poetry_03",
+        "chapter": "第一幕・诗集",
+        "speaker": "旁白",
+        "text": "便签上只有一句：“学姐的画里，有春天的味道。”写完之后，林晚耳朵热得发烫。她没有等顾清璃出现，便像做了坏事似的跑下楼，把自己的心跳丢在三楼那扇没有关紧的门边。",
+        "scene": "“学姐的画里，有春天的味道。”——留在诗集上的一句话。",
+        "next": "poetry_04",
+        "options": []
+      },
+      {
+        "id": "poetry_04",
+        "chapter": "第一幕・诗集",
+        "speaker": "旁白",
+        "text": "次日下午，她再次走近画室时，书已经被翻开。书页中央夹着一片干枯的银杏叶，叶脉细得像有人不敢落笔的情书；旁边还有一行浅浅的铅笔字：“晚香玉，只在雨天开放。”",
+        "scene": "泛黄银杏叶夹在书页间，铅笔字迹在雨光中清晰可见。",
+        "next": "poetry_05",
+        "options": []
+      },
+      {
+        "id": "poetry_05",
+        "chapter": "第一幕・诗集",
+        "speaker": "林晚",
+        "text": "“是她写的吗？可她怎么会知道我喜欢晚香玉？”林晚把书抱到胸前，连翻页都不敢太用力。她想，这或许只是学姐对花的随手注解；可如果不是呢？如果那句话也在等她读懂呢？",
+        "scene": "林晚的心跳，比窗外重新落下的雨还急。",
+        "next": "poetry_06",
+        "options": []
+      },
+      {
+        "id": "poetry_06",
+        "chapter": "第一幕・诗集",
+        "speaker": "旁白",
+        "text": "从那以后，林晚每天放学都会绕道经过画室。她不一定进去，只在门口听一会儿画笔刮过画布的声音。她反复回想顾清璃的眼神，怀疑自己是不是把寻常的沉默误读成了温柔，又悄悄希望自己没有想太多。",
+        "scene": "每个放学后的傍晚，林晚都绕到这盏灯旁。",
+        "next": "poetry_07",
+        "options": []
+      },
+      {
+        "id": "poetry_07",
+        "chapter": "第一幕・诗集",
+        "speaker": "顾清璃",
+        "text": "隔着半掩的门，顾清璃没有抬头，只是淡淡开口：“今天没有下雨，你也来？”林晚僵在原地。顾清璃的画笔停了片刻，又补上一句：“……窗台上的书，我看了。谢谢。”",
+        "scene": "门没有完全打开，却有一句谢谢从画室里传出来。",
+        "next": "sketch_01",
+        "options": []
+      },
+      {
+        "id": "sketch_01",
+        "chapter": "第二幕・素描本",
+        "speaker": "旁白",
+        "text": "文化祭前一周，学校通知画室必须清空整理，腾出部分空间给展览。林晚看到招募志愿者的纸条时，盯着“绘画社”三个字看了很久，最后在报名表上写下名字，笔尖比平时用力得多。",
+        "scene": "文化祭将近，画室里堆满待整理的画架与纸箱。",
+        "next": "sketch_02",
+        "options": []
+      },
+      {
+        "id": "sketch_02",
+        "chapter": "第二幕・素描本",
+        "speaker": "林晚",
+        "text": "“我可以帮忙搬东西，也会把画框擦干净。”她对顾清璃说得很认真，仿佛怕自己的存在会添麻烦。顾清璃看了她一眼，最后只说：“储物柜那边别乱，按标签收。”",
+        "scene": "顾清璃把一串储物柜钥匙放在桌上，目光却停在林晚脸上。",
+        "next": "sketch_03",
+        "options": []
+      },
+      {
+        "id": "sketch_03",
+        "chapter": "第二幕・素描本",
+        "speaker": "顾清璃",
+        "text": "“重的东西叫别人搬。”她像是觉得这句话太多余，转身去整理颜料箱。林晚望着她的背影，心里却轻轻亮了一下：原来这位被大家叫作“画室冰山”的学姐，也会记得她只有一百四十八厘米高。",
+        "scene": "一句不动声色的关照，藏在顾清璃转身之后。",
+        "next": "sketch_04",
+        "options": []
+      },
+      {
+        "id": "sketch_04",
+        "chapter": "第二幕・素描本",
+        "speaker": "旁白",
+        "text": "午后的画室只剩林晚一个人。她按照标签整理储物柜，在最里面摸到一本厚厚的素描本。封面没有名字，边角却因经常翻动而起了毛。她本该放回原处，却被夹在纸页间的一缕银白色颜料吸引。",
+        "scene": "储物柜深处，一本旧素描本压在画纸下面。",
+        "next": "sketch_05",
+        "options": []
+      },
+      {
+        "id": "sketch_05",
+        "chapter": "第二幕・素描本",
+        "speaker": "旁白",
+        "text": "翻开第一页，林晚几乎忘了呼吸。里面全是她：低头读书时垂下的睫毛、趴在图书馆窗边的侧脸、雨里抱着书奔跑的背影，还有她以为没人发现时，对着樱花发呆的模样。每一笔都细腻得近乎珍惜。",
+        "scene": "纸页翻过，一张张林晚的素描安静显现。",
+        "next": "sketch_06",
+        "options": []
+      },
+      {
+        "id": "sketch_06",
+        "chapter": "第二幕・素描本",
+        "speaker": "林晚",
+        "text": "“这些……为什么会是我？”她指腹悬在纸上，不敢触碰。那些画没有把她画成遥远的风景，而像有人长久地站在她身边，记住了她自己都不曾在意的小动作。心里某个答案，忽然变得太响。",
+        "scene": "林晚停在画页前，眼眶被午后的光照得发热。",
+        "next": "sketch_07",
+        "options": []
+      },
+      {
+        "id": "sketch_07",
+        "chapter": "第二幕・素描本",
+        "speaker": "顾清璃",
+        "text": "门被猛地推开。顾清璃看见她拿着素描本，脸色骤变，几步上前一把夺过，声音比雨夜那次更锋利：“谁让你乱动！”",
+        "scene": "顾清璃攥紧素描本，画室里突然静得只剩翻页声。",
+        "next": "sketch_08",
+        "options": []
+      },
+      {
+        "id": "sketch_08",
+        "chapter": "第二幕・素描本",
+        "speaker": "旁白",
+        "text": "林晚被那句话钉在原地，眼泪一下涌到眼眶。顾清璃看见她发红的眼尾，肩膀微微僵住，声音终于软下来：“……那是我画的，但你别误会，只是练习。”林晚抬头问：“那为什么都是我？”顾清璃沉默很久，抱着素描本转身离开。",
+        "scene": "未能说出口的答案，被关在顾清璃抱紧的素描本里。",
+        "next": "umbrella_01",
+        "options": []
+      },
+      {
+        "id": "umbrella_01",
+        "chapter": "第三幕・雨伞",
+        "speaker": "旁白",
+        "text": "文化祭前夜，大雨倾盆。教学楼的灯一盏盏熄灭，旧社团楼的屋檐下只剩急促的水声。林晚撑着自己的透明伞走到门口，意外看见顾清璃站在阴影里，深色风衣的肩头已经沾了潮气。",
+        "scene": "文化祭前夜 · 倾盆大雨 · 屋檐下的相遇",
+        "next": "umbrella_02",
+        "options": []
+      },
+      {
+        "id": "umbrella_02",
+        "chapter": "第三幕・雨伞",
+        "speaker": "顾清璃",
+        "text": "“伞忘在画室了。”顾清璃像是在解释一件无关紧要的小事，目光却没有看林晚。她们自素描本那天起就没有好好说过话，而雨幕把所有可以逃开的路都冲得模糊。",
+        "scene": "顾清璃站在屋檐边，雨水像透明的帘子垂落。",
+        "next": "umbrella_03",
+        "options": []
+      },
+      {
+        "id": "umbrella_03",
+        "chapter": "第三幕・雨伞",
+        "speaker": "林晚",
+        "text": "林晚把伞撑开，向她走近半步，声音轻得几乎会被雨吞掉：“一起走吧。”她没有问顾清璃要去哪里，只把伞沿抬高了一点。顾清璃望着那片透明的弧，迟疑片刻，还是站到了她身边。",
+        "scene": "一把透明伞下，两个身影第一次并肩走进雨里。",
+        "next": "umbrella_04",
+        "options": []
+      },
+      {
+        "id": "umbrella_04",
+        "chapter": "第三幕・雨伞",
+        "speaker": "旁白",
+        "text": "伞很小。林晚下意识把它倾向顾清璃，自己半边肩膀很快淋湿。顾清璃看见后，沉默着把伞推回来。两人的指尖在伞柄上碰到一起，又像被雨烫到似的同时缩回；那一瞬，比任何解释都更让人无措。",
+        "scene": "透明伞上雨珠奔流，碰触过的指尖却比雨更热。",
+        "next": "umbrella_05",
+        "options": []
+      },
+      {
+        "id": "umbrella_05",
+        "chapter": "第三幕・雨伞",
+        "speaker": "林晚",
+        "text": "“学姐。”她走了很久才开口，“你为什么总是画我？”这一次她没有低头。她怕听见敷衍的答案，更怕顾清璃再次沉默，可她终于不想再假装那些素描、那片银杏叶和那朵晚香玉都只是巧合。",
+        "scene": "雨声很大，林晚却第一次没有躲开顾清璃的眼睛。",
+        "next": "umbrella_06",
+        "options": []
+      },
+      {
+        "id": "umbrella_06",
+        "chapter": "第三幕・雨伞",
+        "speaker": "顾清璃",
+        "text": "顾清璃的脚步慢了下来。她看着伞面上倒映的两个人影，像在挑选最难调出的颜色。“因为……”她的声音被雨打得很轻，“你的颜色，很温暖。”",
+        "scene": "顾清璃终于说出一句接近答案的话。",
+        "next": "umbrella_07",
+        "options": []
+      },
+      {
+        "id": "umbrella_07",
+        "chapter": "第三幕・雨伞",
+        "speaker": "林晚",
+        "text": "林晚的手指紧紧握着伞柄：“那为什么不敢承认？为什么在我发现以后，反而要说只是练习？”她的声音在发抖，却不是害怕。她想，如果顾清璃真的把自己当成一张练习纸，那么她也想亲口问清楚。",
+        "scene": "林晚的提问，终于穿过了两人之间长久的沉默。",
+        "next": "umbrella_08",
+        "options": []
+      },
+      {
+        "id": "umbrella_08",
+        "chapter": "第三幕・雨伞",
+        "speaker": "顾清璃",
+        "text": "顾清璃没有立刻回答，只将伞柄稳稳握回两人之间。“明天文化祭，来看我的画吧。”她望向前方被雨洗亮的路灯，停了停，又补充，“看完以后，如果你还想问……我不会再躲。”",
+        "scene": "雨夜的路灯延向远处，约定留在一把伞下。",
+        "next": "exhibit_01",
+        "options": []
+      },
+      {
+        "id": "exhibit_01",
+        "chapter": "第四幕・画展",
+        "speaker": "旁白",
+        "text": "文化祭当天，旧社团楼比往日热闹许多。画室被布置成小小的展厅，人群在油画前低声交谈。林晚穿过那些陌生的目光，终于在中央看到那幅熟悉的银发少女侧影——它已经完成，背景仍是雨中的樱花。",
+        "scene": "文化祭画展中央，一幅完成的油画静静吸引着所有目光。",
+        "next": "exhibit_02",
+        "options": []
+      },
+      {
+        "id": "exhibit_02",
+        "chapter": "第四幕・画展",
+        "speaker": "旁白",
+        "text": "画框下的新标题是《雨中的晚香玉》。那朵藏在右下角的小花被仔细描亮，仿佛整幅画的雨与春天都从那里生长。林晚站在画前，听见身旁有人靠近，熟悉的深色风衣轻轻掠过她的手背。",
+        "scene": "《雨中的晚香玉》——画框下的新标题，像一句没有署名的告白。",
+        "next": "exhibit_03",
+        "options": []
+      },
+      {
+        "id": "exhibit_03",
+        "chapter": "第四幕・画展",
+        "speaker": "顾清璃",
+        "text": "“这幅画，我画了三个月。”顾清璃站在林晚身旁，声音很低，却不再逃避。她没有说画中的人是谁，只将目光放在林晚的侧脸上，像把最后一笔交给她来决定。",
+        "scene": "展厅人声朦胧，顾清璃与林晚站在同一幅画前。",
+        "next": "exhibit_choice",
+        "options": []
+      },
+      {
+        "id": "exhibit_choice",
+        "chapter": "第四幕・画展（关键抉择）",
+        "speaker": "林晚",
+        "text": "心跳在胸口撞得很响。画里少女的沉默、素描本里被珍藏的瞬间、雨伞下那句“很温暖”，全都在这一刻等待她回应。林晚知道，只要说出不同的话，雨后的路也会通向不同的地方。",
+        "scene": "请选择林晚在画展中央，交给顾清璃的回答。",
+        "options": [
+          {
+            "label": "当众握住顾清璃的手，直视她的眼睛：“画里的人是我，对吗？而我喜欢你，比晚香玉更真实。”",
+            "next": "true_01",
+            "ending": "true"
+          },
+          {
+            "label": "低头沉默片刻，微笑说：“画很漂亮，祝你成功。”转身离开。",
+            "next": "regret_01",
+            "ending": "regret"
+          },
+          {
+            "label": "认真端详画作：“光影处理得很棒，但人物眼神里藏着很多话……学姐，你能教我怎么画这种情感吗？以后我可以常来画室吗？”",
+            "next": "hidden_01",
+            "ending": "hidden"
+          }
+        ]
+      },
+      {
+        "id": "true_01",
+        "chapter": "真结局・告白夜",
+        "speaker": "旁白",
+        "text": "林晚没有再让话停在心里。她当众握住顾清璃的手，掌心温度隔着微凉的空气传过去。她仰起脸，直视那双曾躲在画布后的眼睛：“画里的人是我，对吗？而我喜欢你，比晚香玉更真实。”",
+        "scene": "暖粉色的展厅灯光下，林晚主动握住了顾清璃。",
+        "next": "true_02",
+        "options": []
+      },
+      {
+        "id": "true_02",
+        "chapter": "真结局・告白夜",
+        "speaker": "顾清璃",
+        "text": "顾清璃全身一震。围观的人声像被拉远，她反而把林晚的手握得更紧，指节微微发白。“我画了那么久，”她终于笑了一下，笑意比画室的灯还温柔，“就是在等你自己发现。”",
+        "scene": "顾清璃反握住林晚，不再用沉默遮掩。",
+        "next": "true_03",
+        "options": []
+      },
+      {
+        "id": "true_03",
+        "chapter": "真结局・告白夜",
+        "speaker": "旁白",
+        "text": "在众目睽睽之下，顾清璃俯身亲吻林晚的额头。那不是仓促的证明，而是一句终于被允许说出口的“我也是”。林晚闭上眼，闻见她风衣上淡淡的雨气，忽然觉得整整三个月的雨都在为这一刻让路。",
+        "scene": "额头上的轻吻，替代了所有迟到的解释。",
+        "next": "true_04",
+        "options": []
+      },
+      {
+        "id": "true_04",
+        "chapter": "真结局・告白夜",
+        "speaker": "旁白",
+        "text": "后日谈：暑假里，她们一起去了海边。林晚坐在民宿窗边读诗，顾清璃就支起画架画潮汐。风把林晚的银白短发吹乱时，顾清璃会伸手替她别到耳后，像对待画中最舍不得落下的那一点光。",
+        "scene": "海边的晴日，诗集、画架与并肩的影子。",
+        "next": "true_05",
+        "options": []
+      },
+      {
+        "id": "true_05",
+        "chapter": "真结局・告白夜",
+        "speaker": "顾清璃",
+        "text": "秋天来临前，顾清璃把一本新画册放到林晚手中。封面写着《晚香玉四季》，春雨、夏海、秋叶与冬灯，每一幅都是林晚。扉页上署着同一句话：“给唯一的你。”",
+        "scene": "结局 CG：海边的晨光里，顾清璃为林晚翻开《晚香玉四季》；两人的手在画册上交叠，远处海面像融化的金箔。",
+        "isEnd": true,
+        "cg": "【结尾 CG 描述｜暖粉】海边晨光、四季画册与相扣的手。晚香玉终于不必等雨，也能为唯一的人盛开。",
+        "options": []
+      },
+      {
+        "id": "regret_01",
+        "chapter": "遗憾结局・错过的雨季",
+        "speaker": "林晚",
+        "text": "林晚低头沉默了很久，最后还是把所有翻涌的心意压成一个礼貌的微笑。“画很漂亮，祝你成功。”她没有等顾清璃回答，便转身离开。画展的暖灯落在背后，像一场与她无关的晴天。",
+        "scene": "冷灰色的人群与画框之间，林晚选择转身离开。",
+        "next": "regret_02",
+        "options": []
+      },
+      {
+        "id": "regret_02",
+        "chapter": "遗憾结局・错过的雨季",
+        "speaker": "旁白",
+        "text": "当晚，她在手机上删了又写、写了又删，最终只发出一条短信：“学姐的画，永远是最好的。”顾清璃没有回复。林晚也没有再追问。此后，她们像两条在同一场雨里短暂相交的水痕，渐渐被时间冲往不同的方向。",
+        "scene": "一条没有下文的短信，停在冷白的手机屏幕上。",
+        "next": "regret_03",
+        "options": []
+      },
+      {
+        "id": "regret_03",
+        "chapter": "遗憾结局・错过的雨季",
+        "speaker": "旁白",
+        "text": "顾清璃望着林晚离开的背影，许久没有动。展览结束后，她一个人取下《雨中的晚香玉》，锁进储物柜最里面。之后两人再没有说过话，画室窗台上的诗集也终于落满一层薄薄的灰。",
+        "scene": "画被收进储物柜，门锁合上的声音轻得像叹息。",
+        "next": "regret_04",
+        "options": []
+      },
+      {
+        "id": "regret_04",
+        "chapter": "遗憾结局・错过的雨季",
+        "speaker": "旁白",
+        "text": "毕业那天，顾清璃托人把一本画册留给林晚。里面夹着一张纸条：“有些话，画比人说得好。”林晚攥着纸条站在空走廊里，想起那把透明伞、那句“你的颜色，很温暖”，却已经不知道该去哪里找她。",
+        "scene": "毕业日的空走廊，画册夹着一张迟来的纸条。",
+        "next": "regret_05",
+        "options": []
+      },
+      {
+        "id": "regret_05",
+        "chapter": "遗憾结局・错过的雨季",
+        "speaker": "旁白",
+        "text": "很多年后，林晚才明白，那些画并不是练习，而是顾清璃用了三个月、也许更久，练习怎样靠近她的心。可那时已经太迟。画面定格在空荡荡的画室，窗外又落起雨，只有一盏灯还亮着。",
+        "scene": "结局 CG：冷灰画室空无一人，储物柜紧闭，雨水沿窗缓缓滑落；暖黄灯光被雨雾切成遥远的一小块。",
+        "isEnd": true,
+        "cg": "【结尾 CG 描述｜冷灰】空荡画室、锁起的画与窗外的雨。有人终于读懂了画，却没能赶上画里的人。",
+        "options": []
+      },
+      {
+        "id": "hidden_01",
+        "chapter": "隐藏结局・画室与日常",
+        "speaker": "林晚",
+        "text": "林晚没有立刻回答那句无声的告白。她仔细端详画作，认真说：“光影处理得很棒，但人物的眼神里好像藏着很多话……学姐，你能教我怎么画这种情感吗？”她顿了顿，又问，“以后我可以常来画室吗？”",
+        "scene": "暖黄色的展厅里，林晚把答案写成一个关于明天的问题。",
+        "next": "hidden_02",
+        "options": []
+      },
+      {
+        "id": "hidden_02",
+        "chapter": "隐藏结局・画室与日常",
+        "speaker": "顾清璃",
+        "text": "顾清璃怔住，随后看向画中那双没有说完话的眼睛。她没有急着追问林晚的心意，只是把一支干净的铅笔递过去，低声说：“可以。明天开始，先学看光。”这一次，她的手没有收回。",
+        "scene": "一支铅笔递到林晚掌心，像一份安静而郑重的邀约。",
+        "next": "hidden_03",
+        "options": []
+      },
+      {
+        "id": "hidden_03",
+        "chapter": "隐藏结局・画室与日常",
+        "speaker": "旁白",
+        "text": "从此，林晚每天放学都来画室。她们从调色盘聊到星空，从一朵晚香玉如何留白，聊到一场雨要画出多少层灰。顾清璃教她画雨，说雨不是悲伤，是让颜色彼此靠近的理由；林晚则教她读诗，把那些不敢说的话念得很慢。",
+        "scene": "日常的画室里，颜料、诗句与黄昏一同铺开。",
+        "next": "hidden_04",
+        "options": []
+      },
+      {
+        "id": "hidden_04",
+        "chapter": "隐藏结局・画室与日常",
+        "speaker": "旁白",
+        "text": "感情在这些寻常日子里慢慢升温。顾清璃会给林晚留一杯温牛奶，林晚会替她在手腕沾上颜料时递去湿巾。她们仍没有把“喜欢”说破，却早已习惯在每一次下雨时共撑一把伞，也习惯在彼此沉默时留下来。",
+        "scene": "日复一日，喜欢在画笔与诗页之间安静长大。",
+        "next": "hidden_05",
+        "options": []
+      },
+      {
+        "id": "hidden_05",
+        "chapter": "隐藏结局・画室与日常",
+        "speaker": "顾清璃",
+        "text": "毕业典礼那天，顾清璃当众拿出为林晚画的肖像。画中不再是背影，而是林晚抬头微笑的正脸。她对所有人，也对林晚说：“这是我的毕业作品，也是我的告白。”林晚笑着扑进她怀里，窗外正好落下今年第一场春雨。",
+        "scene": "结局 CG：毕业礼堂洒满暖黄的光，顾清璃举起林晚的肖像；林晚扑进她怀里，窗外樱花与细雨同时落下。",
+        "isEnd": true,
+        "cg": "【结尾 CG 描述｜暖黄】毕业肖像、拥抱与初春细雨。日常被认真画成一生，告白终于有了最明亮的落款。",
+        "options": []
+      }
+    ];
+
+    /*
+      ==================== 渲染函数与游戏状态 ====================
+      renderNode 负责切换舞台、说话人和文本；
+      startTypewriter / finishTyping 负责每字 25ms 的逐字显示；
+      chooseOption 负责分支选择及结局主题切换。
+    */
+    const nodeMap = new Map(scriptData.map(function (node) {
+      return [node.id, node];
+    }));
+
+    const gameState = {
+      currentId: "prologue_01",
+      currentNode: null,
+      isTyping: false,
+      typingTimer: null,
+      hasStarted: false
+    };
+
+    const elements = {
+      body: document.body,
+      rainLayer: document.getElementById("rain-layer"),
+      startScreen: document.getElementById("start-screen"),
+      startButton: document.getElementById("start-button"),
+      chapterLabel: document.getElementById("chapter-label"),
+      sceneNote: document.getElementById("scene-note"),
+      linWan: document.getElementById("lin-wan"),
+      guQingli: document.getElementById("gu-qingli"),
+      dialogueBox: document.getElementById("dialogue-box"),
+      speakerTag: document.getElementById("speaker-tag"),
+      dialogueText: document.getElementById("dialogue-text"),
+      choices: document.getElementById("choices"),
+      cgCard: document.getElementById("cg-card"),
+      restartButton: document.getElementById("restart-button"),
+      advanceHint: document.getElementById("advance-hint")
+    };
+
+    const characterNames = {
+      "林晚": "linWan",
+      "顾清璃": "guQingli"
+    };
+
+    function createRain() {
+      const fragment = document.createDocumentFragment();
+      const totalDrops = Math.max(42, Math.min(88, Math.round(window.innerWidth / 16)));
+
+      for (let index = 0; index < totalDrops; index += 1) {
+        const drop = document.createElement("i");
+        const height = 45 + Math.round(Math.random() * 72);
+        const duration = 0.72 + Math.random() * 0.88;
+        const delay = -Math.random() * 2.2;
+        drop.className = "rain-drop";
+        drop.style.left = Math.round(Math.random() * 116 - 6) + "%";
+        drop.style.setProperty("--drop-height", height + "px");
+        drop.style.setProperty("--drop-duration", duration.toFixed(2) + "s");
+        drop.style.setProperty("--drop-delay", delay.toFixed(2) + "s");
+        drop.style.setProperty("--drop-opacity", (0.24 + Math.random() * 0.48).toFixed(2));
+        fragment.appendChild(drop);
+      }
+
+      elements.rainLayer.replaceChildren(fragment);
+    }
+
+    function setActiveCharacter(speaker) {
+      elements.linWan.classList.remove("active");
+      elements.guQingli.classList.remove("active");
+
+      const activeKey = characterNames[speaker];
+      if (activeKey) {
+        elements[activeKey].classList.add("active");
+      }
+    }
+
+    function updateSpeaker(speaker) {
+      elements.speakerTag.textContent = speaker;
+      elements.speakerTag.classList.toggle("narrator", speaker === "旁白");
+      setActiveCharacter(speaker);
+    }
+
+    function clearOptions() {
+      elements.choices.replaceChildren();
+    }
+
+    function renderOptions(options) {
+      clearOptions();
+      if (!options || options.length === 0) {
+        return;
+      }
+
+      options.forEach(function (option) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "choice-button";
+        button.textContent = option.label;
+        button.addEventListener("click", function (event) {
+          event.stopPropagation();
+          chooseOption(option);
+        });
+        elements.choices.appendChild(button);
+      });
+    }
+
+    function showEndingElements(node) {
+      if (!node.isEnd) {
+        elements.cgCard.classList.remove("visible");
+        elements.cgCard.textContent = "";
+        elements.restartButton.classList.remove("visible");
+        return;
+      }
+
+      elements.cgCard.textContent = node.cg || "";
+      elements.cgCard.classList.add("visible");
+      elements.restartButton.classList.add("visible");
+    }
+
+    function finishTyping() {
+      if (!gameState.currentNode) {
+        return;
+      }
+
+      window.clearInterval(gameState.typingTimer);
+      gameState.typingTimer = null;
+      gameState.isTyping = false;
+      elements.dialogueText.textContent = gameState.currentNode.text;
+      renderOptions(gameState.currentNode.options);
+      showEndingElements(gameState.currentNode);
+      elements.advanceHint.textContent = gameState.currentNode.isEnd
+        ? "已抵达结局"
+        : (gameState.currentNode.options && gameState.currentNode.options.length > 0
+          ? "请选择心之所向"
+          : "点击或空格 · 继续");
+    }
+
+    function startTypewriter(node) {
+      const characters = Array.from(node.text);
+      let characterIndex = 0;
+      gameState.isTyping = true;
+      elements.dialogueText.textContent = "";
+      elements.advanceHint.textContent = "点击或空格 · 加速";
+
+      gameState.typingTimer = window.setInterval(function () {
+        elements.dialogueText.textContent += characters[characterIndex] || "";
+        characterIndex += 1;
+
+        if (characterIndex >= characters.length) {
+          finishTyping();
+        }
+      }, 25);
+    }
+
+    function renderNode(nodeId) {
+      const node = nodeMap.get(nodeId);
+      if (!node) {
+        return;
+      }
+
+      window.clearInterval(gameState.typingTimer);
+      gameState.currentId = nodeId;
+      gameState.currentNode = node;
+      clearOptions();
+      showEndingElements({ "isEnd": false });
+      elements.chapterLabel.textContent = node.chapter;
+      elements.sceneNote.textContent = node.scene;
+      updateSpeaker(node.speaker);
+      startTypewriter(node);
+    }
+
+    function chooseOption(option) {
+      if (option.ending) {
+        elements.body.dataset.ending = option.ending;
+      }
+      renderNode(option.next);
+    }
+
+    function advanceStory() {
+      if (!gameState.hasStarted || !gameState.currentNode) {
+        return;
+      }
+
+      if (gameState.isTyping) {
+        finishTyping();
+        return;
+      }
+
+      if (gameState.currentNode.options && gameState.currentNode.options.length > 0) {
+        return;
+      }
+
+      if (gameState.currentNode.next) {
+        renderNode(gameState.currentNode.next);
+      }
+    }
+
+    function startGame() {
+      gameState.hasStarted = true;
+      elements.body.dataset.ending = "";
+      elements.startScreen.classList.add("hidden");
+      renderNode("prologue_01");
+      window.setTimeout(function () {
+        elements.dialogueBox.focus({ preventScroll: true });
+      }, 350);
+    }
+
+    function restartGame() {
+      window.clearInterval(gameState.typingTimer);
+      gameState.currentId = "prologue_01";
+      gameState.currentNode = null;
+      gameState.isTyping = false;
+      elements.body.dataset.ending = "";
+      elements.startScreen.classList.remove("hidden");
+      elements.dialogueText.textContent = "";
+      elements.chapterLabel.textContent = "百合向视觉小说";
+      elements.sceneNote.innerHTML = "四月的黄昏，旧社团楼被细雨包围。<br>有一盏画室的灯，仍亮在三楼。";
+      elements.speakerTag.textContent = "旁白";
+      elements.speakerTag.classList.add("narrator");
+      elements.linWan.classList.remove("active");
+      elements.guQingli.classList.remove("active");
+      clearOptions();
+      showEndingElements({ "isEnd": false });
+      elements.advanceHint.textContent = "点击或空格 · 加速 / 推进";
+    }
+
+    elements.startButton.addEventListener("click", startGame);
+    elements.dialogueBox.addEventListener("click", advanceStory);
+    elements.dialogueBox.addEventListener("keydown", function (event) {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        advanceStory();
+      }
+    });
+    elements.restartButton.addEventListener("click", restartGame);
+
+    document.addEventListener("keydown", function (event) {
+      if (event.key === " " || event.code === "Space") {
+        if (!gameState.hasStarted) {
+          return;
+        }
+        event.preventDefault();
+        advanceStory();
+      }
+    });
+
+    window.addEventListener("resize", function () {
+      window.clearTimeout(window.__rainResizeTimer);
+      window.__rainResizeTimer = window.setTimeout(createRain, 180);
+    });
+
+    createRain();
+  </script>
+</body>
+</html>
