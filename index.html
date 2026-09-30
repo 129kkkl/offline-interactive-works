@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aclaw 3D & 交互作品数字展厅 · Digital Exhibition Hall</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card-bg: rgba(22, 27, 34, 0.85);
+      --card-border: #30363d;
+      --card-hover-border: #58a6ff;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-glow: rgba(88, 166, 255, 0.25);
+      --tag-bg: #21262d;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 40px 20px 80px;
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(56, 139, 253, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 75%, rgba(137, 87, 229, 0.08) 0%, transparent 40%);
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #58a6ff, #bc8cff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    p.subtitle {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      max-width: 700px;
+      margin: 0 auto 24px;
+      line-height: 1.6;
+    }
+    .badges {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 32px;
+    }
+    .badge {
+      background: var(--tag-bg);
+      border: 1px solid var(--card-border);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    .search-box {
+      max-width: 480px;
+      margin: 0 auto 40px;
+      position: relative;
+    }
+    .search-input {
+      width: 100%;
+      padding: 14px 20px;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+      background: rgba(22, 27, 34, 0.6);
+      color: var(--text);
+      font-size: 1rem;
+      backdrop-filter: blur(8px);
+      transition: all 0.2s ease;
+    }
+    .search-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 24px;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+      text-decoration: none;
+      color: inherit;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: var(--card-hover-border);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4), 0 0 20px var(--accent-glow);
+    }
+    .card-top {
+      margin-bottom: 20px;
+    }
+    .card-type {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .card-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: var(--text);
+    }
+    .card-desc {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .card-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 16px;
+      border-top: 1px solid rgba(48, 54, 61, 0.6);
+    }
+    .card-tags {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .tag {
+      font-size: 0.75rem;
+      background: var(--tag-bg);
+      padding: 4px 8px;
+      border-radius: 6px;
+      color: var(--text-muted);
+    }
+    .launch-btn {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    footer {
+      text-align: center;
+      margin-top: 80px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Aclaw 3D & 交互作品数字展厅</h1>
+      <p class="subtitle">沉浸式体素建筑、程序化 3D 场景与 WebGL 交互创意艺术作品集，无需安装或配置，点击任意卡片即可在浏览器中全屏体验。</p>
+      <div class="badges">
+        <span class="badge">🌐 Three.js & WebGL</span>
+        <span class="badge">🏯 纯代码程序化建模</span>
+        <span class="badge">⚡ 60FPS 实时渲染</span>
+        <span class="badge">📦 零依赖单文件</span>
+      </div>
+      <div class="search-box">
+        <input type="text" class="search-input" id="search" placeholder="搜索作品（如：体素、广州、科隆、黄沙、水流...）" oninput="filterCards()">
+      </div>
+    </header>
+
+    <div class="grid" id="grid">
+      <!-- 滕王阁·体素黄昏 -->
+      <a class="card" href="https://129kkkl.github.io/tengwang-pavilion-voxel/" target="_blank">
+        <div class="card-top">
+          <div class="card-type">Voxel Architecture</div>
+          <div class="card-title">滕王阁 · 体素黄昏</div>
+          <div class="card-desc">超大体素中式古建瑰宝，飞檐斗拱、台基水阁与黄昏大气光影实时演算。</div>
+        </div>
+        <div class="card-bottom">
+          <div class="card-tags"><span class="tag">Three.js</span><span class="tag">古建筑</span></div>
+          <span class="launch-btn">进入体验 →</span>
+        </div>
+      </a>
+
+      <!-- 云山巨城 -->
+      <a class="card" href="云山巨城_离线版.html" target="_blank">
+        <div class="card-top">
+          <div class="card-type">Megacity 3D</div>
+          <div class="card-title">云山巨城 · 仙阙飞瀑</div>
+          <div class="card-desc">耸立于万丈飞瀑与峭壁之间的巨型东方幻想仙阙大都会，24小时动态光影。</div>
+        </div>
+        <div class="card-bottom">
+          <div class="card-tags"><span class="tag">体素巨城</span><span class="tag">多机位</span></div>
+          <span class="launch-btn">进入体验 →</span>
+        </div>
+      </a>
+
+      <!-- 体素广州 -->
+      <a class="card" href="体素广州_新中轴夜景_离线版.html" target="_blank">
+        <div class="card-top">
+          <div class="card-type">Procedural City</div>
+          <div class="card-title">体素广州 · 新中轴夜景</div>
+          <div class="card-desc">广州塔、海心沙与珠江新城天际线的程序化体素艺术重塑，波光粼粼水面。</div>
+        </div>
+        <div class="card-bottom">
+          <div class="card-tags"><span class="tag">城市夜景</span><span class="tag">小蛮腰</span></div>
+          <span class="launch-btn">进入体验 →</span>
+        </div>
+      </a>
+
+      <!-- 黄沙边镇 -->
+      <a class="card" href="黄沙边镇.html" target="_blank">
+        <div class="card-top">
+          <div class="card-type">Western Voxel</div>
+          <div class="card-title">黄沙边镇 · Yellow Sand Gulch</div>
+          <div class="card-desc">0.2 米精度的西部荒野体素小镇，沿峡谷行进的蒸汽火车与动态昼夜系统。</div>
+        </div>
+        <div class="card-bottom">
+          <div class="card-tags"><span class="tag">西部小镇</span><span class="tag">蒸汽机车</span></div>
+          <span class="launch-btn">进入体验 →</span>
+        </div>
+      </a>
+
+      <!-- 北行·峡湾航记 -->
+      <a class="card" href="北行_Northbound_峡湾航记.html" target="_blank">
+        <div class="card-top">
+          <div class="card-type">Atmospheric 3D</div>
+          <div class="card-title">北行 · 峡湾航记 (Northbound)</div>
+          <div class="card-desc">北欧长船穿行于晨曦与迷雾峡湾之间的体素交互航程，伴随流水水痕演算。</div>
+        </div>
+        <div class="card-bottom">
+          <div class="card-tags"><span class="tag">维京长船</span><span class="tag">峡湾迷雾</span></div>
+          <span class="launch-btn">进入体验 →</span>
+        </div>
+      </a>
+
+      <!-- 云阙_云海浮阁 -->
+      <a class="card" href="云阙_云海浮阁.html" target="_blank">
+        <div class="card-top">
+          <div class="card-type">Fantasy Architecture</div>
+          <div class="card-title">云阙 · 云海浮阁</div>
+          <div class="card-desc">浮游于茫茫云海之上的琼楼玉宇，轻灵空旷，云雾粒子动态缭绕。</div>
+        </div>
+        <div class="card-bottom">
+          <div class="card-tags"><span class="tag">仙侠风</span><span class="tag">云海粒子</span></div>
+          <span class="launch-btn">进入体验 →</span>
+        </div>
+      </a>
+
+      <!-- 科隆大教堂_体素黄昏 -->
+      <a class="card" href="科隆大教堂_体素黄昏_优化版.html" target="_blank">
+        <div class="card-top">
+          <div class="card-type">Gothic Voxel</div>
+          <div class="card-title">科隆大教堂 · 体素黄昏</div>
+          <div class="card-desc">高耸入云的双塔哥特式大教堂，复杂的尖拱窗与飞扶壁体素数字化雕塑。</div>
+        </div>
+        <div class="card-bottom">
+          <div class="card-tags"><span class="tag">哥特建筑</span><span class="tag">黄昏光影</span></div>
+          <span class="launch-btn">进入体验 →</span>
+        </div>
+      </a>
+
+      <!-- 雨夜便利店街角 -->
+      <a class="card" href="雨夜便利店街角_离线版.html" target="_blank">
+        <div class="card-top">
+          <div class="card-type">Cyberpunk / Mood</div>
+          <div class="card-title">雨夜便利店街角</div>
+          <div class="card-desc">潮湿反光的沥青路面、暖黄色招牌霓虹灯与淅淅沥沥的夜雨粒子环境。</div>
+        </div>
+        <div class="card-bottom">
+          <div class="card-tags"><span class="tag">雨夜氛围</span><span class="tag">街角</span></div>
+          <span class="launch-btn">进入体验 →</span>
+        </div>
+      </a>
+
+      <!-- 风野 Petalwind -->
+      <a class="card" href="风野_Petalwind_离线版.html" target="_blank">
+        <div class="card-top">
+          <div class="card-type">Nature / Interactive</div>
+          <div class="card-title">风野 · Petalwind</div>
+          <div class="card-desc">风拂过草甸与漫天飞舞的樱花花瓣流场，支持鼠标引力互动。</div>
+        </div>
+        <div class="card-bottom">
+          <div class="card-tags"><span class="tag">花瓣粒子</span><span class="tag">流场交互</span></div>
+          <span class="launch-btn">进入体验 →</span>
+        </div>
+      </a>
+
+      <!-- 箱庭小镇 -->
+      <a class="card" href="箱庭小镇.html" target="_blank">
+        <div class="card-top">
+          <div class="card-type">Voxel Diorama</div>
+          <div class="card-title">欧洲箱庭小镇</div>
+          <div class="card-desc">精致的微缩欧式海滨箱庭，小巧玲珑的瓦屋顶、鹅卵石街巷与港湾帆船。</div>
+        </div>
+        <div class="card-bottom">
+          <div class="card-tags"><span class="tag">箱庭微缩</span><span class="tag">海滨</span></div>
+          <span class="launch-btn">进入体验 →</span>
+        </div>
+      </a>
+
+      <!-- WebGL 流体模拟 -->
+      <a class="card" href="webgl-fluid-simulation.html" target="_blank">
+        <div class="card-top">
+          <div class="card-type">Physics Simulation</div>
+          <div class="card-title">WebGL 高效流体模拟</div>
+          <div class="card-desc">基于纳维-斯托克斯方程的 GPU 实时流体多相湍流与绚丽色彩扩散模拟。</div>
+        </div>
+        <div class="card-bottom">
+          <div class="card-tags"><span class="tag">GPU Fluid</span><span class="tag">着色器</span></div>
+          <span class="launch-btn">进入体验 →</span>
+        </div>
+      </a>
+
+      <!-- 机械键盘配置器 -->
+      <a class="card" href="https://129kkkl.github.io/mechanical-keyboard-configurator/" target="_blank">
+        <div class="card-top">
+          <div class="card-type">Web Tool</div>
+          <div class="card-title">客制化机械键盘配置器</div>
+          <div class="card-desc">3D/Canvas 键盘配列、轴体、定位板与键帽全景定制，支持实时导出配置。</div>
+        </div>
+        <div class="card-bottom">
+          <div class="card-tags"><span class="tag">客制化</span><span class="tag">3D 工具</span></div>
+          <span class="launch-btn">进入体验 →</span>
+        </div>
+      </a>
+
+      <!-- 取舍留下的形状 -->
+      <a class="card" href="取舍留下的形状_离线版.html" target="_blank">
+        <div class="card-top">
+          <div class="card-type">Generative Art</div>
+          <div class="card-title">取舍留下的形状</div>
+          <div class="card-desc">实验性生成艺术装置，通过线条与织机的几何交织表达动态决策逻辑。</div>
+        </div>
+        <div class="card-bottom">
+          <div class="card-tags"><span class="tag">装置艺术</span><span class="tag">生成艺术</span></div>
+          <span class="launch-btn">进入体验 →</span>
+        </div>
+      </a>
+
+      <!-- 未定形 -->
+      <a class="card" href="未定形_离线版.html" target="_blank">
+        <div class="card-top">
+          <div class="card-type">Particle Field</div>
+          <div class="card-title">未定形 · The Unformed</div>
+          <div class="card-desc">无序粒子的自组织流体场，在引力与斥力平衡中演化出生命般的动态结构。</div>
+        </div>
+        <div class="card-bottom">
+          <div class="card-tags"><span class="tag">粒子场</span><span class="tag">复杂系统</span></div>
+          <span class="launch-btn">进入体验 →</span>
+        </div>
+      </a>
+    </div>
+
+    <footer>
+      <p>Created by <a href="https://github.com/129kkkl" style="color:var(--accent); text-decoration:none;">129kkkl</a> · 探索实时程序化图形与虚拟世界的无限边界</p>
+    </footer>
+  </div>
+
+  <script>
+    function filterCards() {
+      const q = document.getElementById('search').value.toLowerCase();
+      const cards = document.querySelectorAll('.card');
+      cards.forEach(card => {
+        const text = card.innerText.toLowerCase();
+        card.style.display = text.includes(q) ? 'flex' : 'none';
+      });
+    }
+  </script>
+</body>
+</html>
